@@ -7,7 +7,11 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.send("API running");
+  res.send("API Pixel War running");
+});
+
+app.get("/api/health", (_req, res) => {
+  res.json({ ok: true });
 });
 
 app.listen(3000, () => {
