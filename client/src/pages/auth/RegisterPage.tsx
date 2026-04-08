@@ -2,10 +2,12 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 
-export function AuthPage() {
-  const { login } = useAuth()
+export function RegisterPage() {
+  const { register } = useAuth()
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -21,9 +23,14 @@ export function AuthPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
-    setIsSubmitting(true)
 
-    const result = await login(email, password)
+    if (password !== confirmPassword) {
+      setError('Les mots de passe ne correspondent pas.')
+      return
+    }
+
+    setIsSubmitting(true)
+    const result = await register(username, email, password)
     if (!result.ok) {
       setError(result.error)
       setIsSubmitting(false)
@@ -49,10 +56,22 @@ export function AuthPage() {
         </button>
         <img className="auth-logo" src="/gardian.svg" alt="Pixel War" />
 
-        <h1>AUTH_GATE</h1>
-        <p>Connecte-toi pour deployer tes pixels sur le front.</p>
+        <h1>CREATE_ACCOUNT</h1>
+        <p>Cree ton operateur pour rejoindre le front Pixel War.</p>
 
         <form className="auth-form" onSubmit={handleSubmit}>
+          <label htmlFor="username">USERNAME</label>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            placeholder="nom_operateur"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            minLength={3}
+            required
+          />
+
           <label htmlFor="email">EMAIL</label>
           <input
             id="email"
@@ -72,17 +91,31 @@ export function AuthPage() {
             placeholder="********"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
+            minLength={6}
             required
           />
+
+          <label htmlFor="confirmPassword">CONFIRM_PASSWORD</label>
+          <input
+            id="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            placeholder="********"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            minLength={6}
+            required
+          />
+
           {error && <p className="auth-error">{error}</p>}
 
           <button className="btn btn-primary auth-submit" type="submit" disabled={isSubmitting}>
-            ENTER WAR_ROOM
+            CREATE ACCOUNT
           </button>
         </form>
 
         <div className="auth-links">
-          <a href="/register">CREATE ACCOUNT</a>
+          <a href="/auth">ALREADY REGISTERED</a>
           <a href="#">FORGOT PASSWORD</a>
         </div>
       </section>
