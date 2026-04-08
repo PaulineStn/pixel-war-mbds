@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { MOCK_EMAIL, MOCK_PASSWORD } from '../../lib/auth'
 import { useAuth } from '../../hooks/useAuth'
 
 export function AuthPage() {
@@ -8,6 +7,7 @@ export function AuthPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const closeAuth = () => {
     if (window.history.length > 1) {
@@ -18,12 +18,15 @@ export function AuthPage() {
     window.location.href = '/'
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    setError('')
+    setIsSubmitting(true)
 
-    const result = login(email, password)
+    const result = await login(email, password)
     if (!result.ok) {
       setError(result.error)
+      setIsSubmitting(false)
       return
     }
 
@@ -55,9 +58,10 @@ export function AuthPage() {
             id="email"
             name="email"
             type="email"
-            placeholder={MOCK_EMAIL}
+            placeholder="votre@email.fr"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
+            required
           />
 
           <label htmlFor="password">PASSWORD</label>
@@ -68,18 +72,17 @@ export function AuthPage() {
             placeholder="********"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
+            required
           />
-
-          <p className="auth-hint">Mock: {MOCK_EMAIL} / {MOCK_PASSWORD}</p>
           {error && <p className="auth-error">{error}</p>}
 
-          <button className="btn btn-primary auth-submit" type="submit">
+          <button className="btn btn-primary auth-submit" type="submit" disabled={isSubmitting}>
             ENTER WAR_ROOM
           </button>
         </form>
 
         <div className="auth-links">
-          <a href="#">CREATE ACCOUNT</a>
+          <a href="/register">CREATE ACCOUNT</a>
           <a href="#">FORGOT PASSWORD</a>
         </div>
       </section>

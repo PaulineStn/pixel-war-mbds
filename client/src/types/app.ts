@@ -13,5 +13,7 @@ export type PixelWar = {
 export type Theme = 'dark' | 'light'
 
 export type AuthSession = {
+  id: string
+  username: string
   email: string
 }

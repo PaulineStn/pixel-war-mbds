@@ -51,8 +51,8 @@ export function ProfilePage({ theme, onToggleTheme }: ProfilePageProps) {
         <section className="profile-header">
           <h1>MON PROFILE</h1>
           <p>
-            Statistiques operateur (mock) sur tes contributions Pixel War.
-            {session ? ` Connecte: ${session.email}` : ''}
+            Statistiques operateur sur tes contributions Pixel War.
+            {session ? ` Connecte: ${session.username} (${session.email})` : ''}
           </p>
         </section>
 

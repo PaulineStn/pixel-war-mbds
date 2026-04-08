@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import { AuthPage } from './pages/auth/AuthPage'
+import { RegisterPage } from './pages/auth/RegisterPage'
 import { ProfilePage } from './pages/profile/ProfilePage'
 import { WarRoomPage } from './pages/board/WarRoomPage'
 import type { Theme } from './types/app'
@@ -28,6 +29,10 @@ function App() {
 
   if (window.location.pathname === '/auth') {
     return <AuthPage />
+  }
+
+  if (window.location.pathname === '/register') {
+    return <RegisterPage />
   }
 
   if (window.location.pathname === '/profile') {

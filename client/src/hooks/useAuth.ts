@@ -1,24 +1,35 @@
-import { clearAuthSession, getAuthSession, saveAuthSession, MOCK_EMAIL, MOCK_PASSWORD } from '../lib/auth'
+import {
+  authenticateUser,
+  clearAuthSession,
+  createAccount,
+  getAuthSession,
+  saveAuthSession,
+} from '../lib/auth'
 import type { AuthSession } from '../types/app'
 
 export function useAuth() {
   const session = getAuthSession()
   const isLoggedIn = Boolean(session)
 
-  const login = (email: string, password: string) => {
-    if (email !== MOCK_EMAIL || password !== MOCK_PASSWORD) {
+  const login = async (email: string, password: string) => {
+    try {
+      const sessionFromAuth = await authenticateUser(email, password)
+      const nextSession: AuthSession = {
+        id: sessionFromAuth.id,
+        username: sessionFromAuth.username,
+        email: sessionFromAuth.email,
+      }
+      saveAuthSession(nextSession)
+
+      return {
+        ok: true as const,
+        session: nextSession,
+      }
+    } catch (error) {
       return {
         ok: false as const,
-        error: 'Identifiants invalides (mock).',
+        error: error instanceof Error ? error.message : 'Erreur lors de la connexion.',
       }
-    }
-
-    const nextSession: AuthSession = { email }
-    saveAuthSession(nextSession)
-
-    return {
-      ok: true as const,
-      session: nextSession,
     }
   }
 
@@ -26,10 +37,33 @@ export function useAuth() {
     clearAuthSession()
   }
 
+  const register = async (username: string, email: string, password: string) => {
+    try {
+      const createdUser = await createAccount(username, email, password)
+      const nextSession: AuthSession = {
+        id: createdUser.id,
+        username: createdUser.username,
+        email: createdUser.email,
+      }
+      saveAuthSession(nextSession)
+
+      return {
+        ok: true as const,
+        session: nextSession,
+      }
+    } catch (error) {
+      return {
+        ok: false as const,
+        error: error instanceof Error ? error.message : 'Erreur lors de la creation du compte.',
+      }
+    }
+  }
+
   return {
     session,
     isLoggedIn,
     login,
+    register,
     logout,
   }
 }
