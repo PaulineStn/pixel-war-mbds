@@ -3,6 +3,7 @@ import {
   clearAuthSession,
   createAccount,
   getAuthSession,
+  logoutUser,
   saveAuthSession,
 } from '../lib/auth'
 import type { AuthSession } from '../types/app'
@@ -18,6 +19,7 @@ export function useAuth() {
         id: sessionFromAuth.id,
         username: sessionFromAuth.username,
         email: sessionFromAuth.email,
+        token: sessionFromAuth.token,
       }
       saveAuthSession(nextSession)
 
@@ -33,8 +35,18 @@ export function useAuth() {
     }
   }
 
-  const logout = () => {
+  const logout = async () => {
+    const currentToken = session?.token
     clearAuthSession()
+    if (!currentToken) {
+      return
+    }
+
+    try {
+      await logoutUser(currentToken)
+    } catch {
+      // Best effort: local logout is already done.
+    }
   }
 
   const register = async (username: string, email: string, password: string) => {
@@ -44,6 +56,7 @@ export function useAuth() {
         id: createdUser.id,
         username: createdUser.username,
         email: createdUser.email,
+        token: createdUser.token,
       }
       saveAuthSession(nextSession)
 

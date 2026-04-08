@@ -1,9 +1,11 @@
-version: '3.8'
-
 services:
   mongo:
     image: mongo:7
     container_name: pixelboard-mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: pixel_admin
+      MONGO_INITDB_ROOT_PASSWORD: pixel_admin_pwd
+      MONGO_INITDB_DATABASE: pixel-war
     ports:
       - '27017:27017'
     volumes:

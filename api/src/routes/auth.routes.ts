@@ -1,19 +1,25 @@
 import { Router, Request, Response, NextFunction } from "express";
-import passport from "passport";
 import {
   createUser,
   getAllUsers,
   getUserByEmail,
+  getUserByEmailWithPassword,
   getUserById,
+  verifyPassword,
 } from "../services/auth.service";
+import { createToken, verifyToken } from "../services/jwt.service";
 
 const router = Router();
 const MIN_PASSWORD_LENGTH = 6;
 
 type AuthenticatedUser = {
-  _id: string;
+  id: string;
   username: string;
   email: string;
+};
+
+type AuthenticatedRequest = Request & {
+  authUser?: AuthenticatedUser;
 };
 
 const parseCredentials = (req: Request) => {
@@ -42,64 +48,64 @@ const parseRegisterInput = (req: Request) => {
   return { username, email, password };
 };
 
-const authenticateLocal = (req: Request, res: Response, next: NextFunction) => {
-  passport.authenticate(
-    "local",
-    (error: unknown, user: Express.User | false, info: { message?: string } | undefined) => {
-      if (error) {
-        res.status(500).json({ message: "Erreur lors de l'authentification." });
-        return;
-      }
-
-      if (!user) {
-        res.status(401).json({
-          message: info?.message ?? "Identifiants invalides.",
-        });
-        return;
-      }
-
-      req.logIn(user, (loginError) => {
-        if (loginError) {
-          res.status(500).json({
-            message: "Erreur lors de la création de la session.",
-          });
-          return;
-        }
-
-        const authUser = user as AuthenticatedUser;
-
-        res.status(200).json({
-          id: authUser._id,
-          username: authUser.username,
-          email: authUser.email,
-        });
-      });
-    }
-  )(req, res, next);
-};
-
-const requireAuth = (req: Request, res: Response, next: NextFunction) => {
-  if (req.isAuthenticated && req.isAuthenticated()) {
-    next();
-    return;
+const parseBearerToken = (authorizationHeader: string | undefined) => {
+  if (!authorizationHeader) {
+    return null;
   }
 
-  res.status(401).json({ message: "Non authentifié." });
+  const [scheme, token] = authorizationHeader.split(" ");
+  if (scheme?.toLowerCase() !== "bearer" || !token) {
+    return null;
+  }
+
+  return token;
+};
+
+const toAuthenticatedUser = (user: { _id: unknown; username: string; email: string }): AuthenticatedUser => ({
+  id: String(user._id),
+  username: user.username,
+  email: user.email,
+});
+
+const requireAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const token = parseBearerToken(req.header("authorization"));
+    if (!token) {
+      res.status(401).json({ message: "Token Bearer manquant." });
+      return;
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      res.status(401).json({ message: "Token invalide ou expiré." });
+      return;
+    }
+
+    const user = await getUserById(payload.sub);
+    if (!user) {
+      res.status(401).json({ message: "Utilisateur non trouvé pour ce token." });
+      return;
+    }
+
+    req.authUser = toAuthenticatedUser(user);
+    next();
+  } catch {
+    res.status(500).json({ message: "Erreur lors de la vérification du token." });
+  }
 };
 
 // GET /auth/me
-router.get("/me", requireAuth, (req: Request, res: Response) => {
-  const user = req.user as AuthenticatedUser;
+router.get("/me", requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  if (!req.authUser) {
+    res.status(401).json({ message: "Non authentifié." });
+    return;
+  }
 
-  res.status(200).json({
-    id: user._id,
-    username: user.username,
-    email: user.email,
-  });
+  res.status(200).json(req.authUser);
 });
 
 // POST /auth/login
-router.post("/login", (req: Request, res: Response, next: NextFunction) => {
+router.post("/login", async (req: Request, res: Response) => {
   try {
     const { email, password } = parseCredentials(req);
 
@@ -108,31 +114,38 @@ router.post("/login", (req: Request, res: Response, next: NextFunction) => {
       return;
     }
 
-    req.body = { email, password };
-    authenticateLocal(req, res, next);
+    const user = await getUserByEmailWithPassword(email);
+    if (!user || !user.password) {
+      res.status(401).json({ message: "Identifiants invalides." });
+      return;
+    }
+
+    const isValid = await verifyPassword(password, user.password);
+    if (!isValid) {
+      res.status(401).json({ message: "Identifiants invalides." });
+      return;
+    }
+
+    const authUser = toAuthenticatedUser(user);
+    const token = createToken({
+      sub: authUser.id,
+      username: authUser.username,
+      email: authUser.email,
+    });
+
+    res.status(200).json({
+      token,
+      user: authUser,
+    });
   } catch {
     res.status(500).json({ message: "Erreur lors de l'authentification." });
   }
 });
 
 // POST /auth/logout
-router.post("/logout", (req: Request, res: Response, next: NextFunction) => {
-  req.logout((error) => {
-    if (error) {
-      next(error);
-      return;
-    }
-
-    req.session.destroy((sessionError) => {
-      if (sessionError) {
-        res.status(500).json({ message: "Erreur lors de la déconnexion." });
-        return;
-      }
-
-      res.clearCookie("connect.sid");
-      res.status(200).json({ message: "Déconnexion réussie." });
-    });
-  });
+router.post("/logout", (_req: Request, res: Response) => {
+  // JWT is stateless: client removes the token locally.
+  res.status(200).json({ message: "Déconnexion réussie." });
 });
 
 // POST /auth/register
@@ -155,11 +168,16 @@ router.post("/register", async (req: Request, res: Response) => {
     }
 
     const newUser = await createUser({ username, email, password });
+    const authUser = toAuthenticatedUser(newUser);
+    const token = createToken({
+      sub: authUser.id,
+      username: authUser.username,
+      email: authUser.email,
+    });
 
     res.status(201).json({
-      id: newUser._id,
-      username: newUser.username,
-      email: newUser.email,
+      token,
+      user: authUser,
     });
   } catch (error) {
     const message =
@@ -167,13 +185,21 @@ router.post("/register", async (req: Request, res: Response) => {
         ? error.message
         : "Erreur lors de la création de l'utilisateur.";
 
+    if (message.toLowerCase().includes("requires authentication")) {
+      res.status(500).json({
+        message:
+          "Erreur de configuration MongoDB: authentification requise. Vérifie MONGODB_URI ou MONGODB_USER/MONGODB_PASSWORD.",
+      });
+      return;
+    }
+
     const statusCode = message.includes("existe déjà") ? 409 : 400;
     res.status(statusCode).json({ message });
   }
 });
 
 // GET /auth/users
-router.get("/users", async (_req: Request, res: Response) => {
+router.get("/users", requireAuth, async (_req: Request, res: Response) => {
   try {
     const users = await getAllUsers();
     res.status(200).json(users);
@@ -185,7 +211,7 @@ router.get("/users", async (_req: Request, res: Response) => {
 });
 
 // GET /auth/users/by-email?email=...
-router.get("/users/by-email", async (req: Request, res: Response) => {
+router.get("/users/by-email", requireAuth, async (req: Request, res: Response) => {
   try {
     const emailParam = req.query.email;
     const email =
@@ -212,9 +238,14 @@ router.get("/users/by-email", async (req: Request, res: Response) => {
 });
 
 // GET /auth/users/:id
-router.get("/users/:id", async (req: Request, res: Response) => {
+router.get("/users/:id", requireAuth, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = typeof req.params.id === "string" ? req.params.id : "";
+
+    if (!id) {
+      res.status(400).json({ message: "Identifiant utilisateur invalide." });
+      return;
+    }
 
     const user = await getUserById(id);
 

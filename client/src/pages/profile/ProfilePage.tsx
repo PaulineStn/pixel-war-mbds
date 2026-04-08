@@ -10,8 +10,8 @@ type ProfilePageProps = {
 export function ProfilePage({ theme, onToggleTheme }: ProfilePageProps) {
   const { isLoggedIn, logout, session } = useAuth()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     window.location.href = '/'
   }
 

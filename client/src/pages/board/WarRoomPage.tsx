@@ -59,8 +59,8 @@ const archivedWars: PixelWar[] = [
 export function WarRoomPage({ theme, onToggleTheme }: WarRoomPageProps) {
   const { isLoggedIn, logout } = useAuth()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     window.location.href = '/'
   }
 
