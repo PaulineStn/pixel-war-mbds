@@ -20,6 +20,7 @@ export function useAuth() {
         username: sessionFromAuth.username,
         email: sessionFromAuth.email,
         token: sessionFromAuth.token,
+        isAdmin: sessionFromAuth.isAdmin,
       }
       saveAuthSession(nextSession)
 
@@ -57,6 +58,7 @@ export function useAuth() {
         username: createdUser.username,
         email: createdUser.email,
         token: createdUser.token,
+        isAdmin: createdUser.isAdmin,
       }
       saveAuthSession(nextSession)
 
