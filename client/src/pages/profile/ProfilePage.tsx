@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { ThemeToggleButton } from '../../components/ThemeToggleButton'
 import { useAuth } from '../../hooks/useAuth'
 import type { Theme } from '../../types/app'
+import { getContributions, type Contributions } from '../../lib/auth'
 
 type ProfilePageProps = {
   theme: Theme
@@ -9,6 +11,20 @@ type ProfilePageProps = {
 
 export function ProfilePage({ theme, onToggleTheme }: ProfilePageProps) {
   const { isLoggedIn, logout, session } = useAuth()
+  const [contributions, setContributions] = useState<Contributions | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!session) {
+      window.location.href = '/auth'
+      return
+    }
+
+    getContributions(session.token)
+      .then(setContributions)
+      .catch(() => setContributions({ totalPixels: 0, boards: [] }))
+      .finally(() => setLoading(false))
+  }, [session?.id])
 
   const handleLogout = async () => {
     await logout()
@@ -26,9 +42,10 @@ export function ProfilePage({ theme, onToggleTheme }: ProfilePageProps) {
           <a href="/">CANVAS</a>
           {isLoggedIn && (
             <a className="active" href="/profile">
-              MON PROFILE
+              MON PROFIL
             </a>
           )}
+          {session?.isAdmin && <a href="/admin">ADMIN</a>}
         </nav>
       </aside>
 
@@ -49,60 +66,57 @@ export function ProfilePage({ theme, onToggleTheme }: ProfilePageProps) {
         </header>
 
         <section className="profile-header">
-          <h1>MON PROFILE</h1>
-          <p>
-            Statistiques operateur sur tes contributions Pixel War.
-            {session ? ` Connecte: ${session.username} (${session.email})` : ''}
-          </p>
+          <h1>MON PROFIL</h1>
+          {session && (
+            <p>
+              <strong>{session.username}</strong> — {session.email}
+            </p>
+          )}
         </section>
 
-        <section className="profile-grid">
-          <article className="profile-card">
-            <p className="hero-overline">GLOBAL_RANKING</p>
-            <h2>#420</h2>
-            <p>Top 0.5% des operateurs.</p>
-          </article>
+        {loading ? (
+          <p className="boards-loading">Chargement des statistiques...</p>
+        ) : (
+          <>
+            <section className="profile-stats">
+              <article className="stat-card">
+                <p>PIXELS PLACÉS</p>
+                <strong>{contributions?.totalPixels ?? 0}</strong>
+              </article>
 
-          <article className="profile-card">
-            <p className="hero-overline">LEVEL</p>
-            <h2>48</h2>
-            <p>Prochain palier dans 4,200 PX.</p>
-          </article>
-        </section>
+              <article className="stat-card">
+                <p>BOARDS PARTICIPÉS</p>
+                <strong>{contributions?.boards.length ?? 0}</strong>
+              </article>
+            </section>
 
-        <section className="profile-stats">
-          <article className="stat-card">
-            <p>PIXELS AJOUTES</p>
-            <strong>84,291</strong>
-          </article>
+            <section className="profile-logs">
+              <div className="logs-header">
+                <h2>BOARDS PARTICIPÉS</h2>
+              </div>
 
-          <article className="stat-card">
-            <p>BOARDS PARTICIPES</p>
-            <strong>17</strong>
-          </article>
-        </section>
-
-        <section className="profile-logs">
-          <div className="logs-header">
-            <h2>PARTICIPATION_LOGS</h2>
-            <a href="#">ARCHIVE_ACCESS &gt;&gt;</a>
-          </div>
-
-          <ul>
-            <li>
-              <span>NEO_TOKYO_DISTRICT_7</span>
-              <span>+450 CREDITS</span>
-            </li>
-            <li>
-              <span>VOID_CORE_CHALLENGE</span>
-              <span>+1,200 CREDITS</span>
-            </li>
-            <li>
-              <span>CYBER_DOME_BATTLEFIELD</span>
-              <span>+280 CREDITS</span>
-            </li>
-          </ul>
-        </section>
+              {contributions && contributions.boards.length > 0 ? (
+                <ul>
+                  {contributions.boards.map((board) => (
+                    <li key={board._id}>
+                      <a href={`/board/${board._id}`}>
+                        {board.title ?? 'Sans titre'}
+                      </a>
+                      <span className={`board-status ${board.status}`}>
+                        {board.status === 'active' ? 'EN COURS' : 'TERMINÉ'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="boards-empty">
+                  Tu n'as pas encore participé à un PixelBoard.{' '}
+                  <a href="/">Rejoins-en un !</a>
+                </p>
+              )}
+            </section>
+          </>
+        )}
       </main>
     </div>
   )
