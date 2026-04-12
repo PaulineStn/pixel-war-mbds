@@ -8,6 +8,7 @@ import {
   verifyPassword,
 } from "../services/auth.service";
 import { createToken, verifyToken } from "../services/jwt.service";
+import { getUserContributions } from "../services/pixel.service";
 
 const router = Router();
 const MIN_PASSWORD_LENGTH = 6;
@@ -16,6 +17,7 @@ type AuthenticatedUser = {
   id: string;
   username: string;
   email: string;
+  isAdmin: boolean;
 };
 
 type AuthenticatedRequest = Request & {
@@ -61,10 +63,11 @@ const parseBearerToken = (authorizationHeader: string | undefined) => {
   return token;
 };
 
-const toAuthenticatedUser = (user: { _id: unknown; username: string; email: string }): AuthenticatedUser => ({
+const toAuthenticatedUser = (user: { _id: unknown; username: string; email: string; isAdmin?: boolean }): AuthenticatedUser => ({
   id: String(user._id),
   username: user.username,
   email: user.email,
+  isAdmin: user.isAdmin ?? false,
 });
 
 const requireAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -103,6 +106,22 @@ router.get("/me", requireAuth, (req: AuthenticatedRequest, res: Response) => {
 
   res.status(200).json(req.authUser);
 });
+
+// GET /auth/me/contributions
+router.get(
+  "/me/contributions",
+  requireAuth,
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const contributions = await getUserContributions(req.authUser!.id);
+      res.status(200).json(contributions);
+    } catch {
+      res
+        .status(500)
+        .json({ message: "Erreur lors de la récupération des contributions." });
+    }
+  }
+);
 
 // POST /auth/login
 router.post("/login", async (req: Request, res: Response) => {

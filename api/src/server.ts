@@ -2,7 +2,11 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import { createServer } from "node:http";
 import userRouter from "./routes/auth.routes";
+import boardRouter from "./routes/board.routes";
+import pixelRouter from "./routes/pixel.routes";
+import { initSocket } from "./socket";
 
 dotenv.config();
 
@@ -46,17 +50,14 @@ const getMongoUri = () => {
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow tools/curl without Origin header.
       if (!origin) {
         callback(null, true);
         return;
       }
-
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
         return;
       }
-
       callback(new Error(`Origin non autorisée par CORS: ${origin}`));
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -66,10 +67,11 @@ app.use(
 );
 app.use(express.json());
 
-//app.use("/users", userRouter);
 app.use("/auth", userRouter);
+app.use("/boards", boardRouter);
+app.use("/boards/:id/pixels", pixelRouter);
 
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   res.send("API Pixel War running");
 });
 
@@ -77,11 +79,14 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
 });
 
+// Créer le serveur HTTP et y attacher Socket.io
+const httpServer = createServer(app);
+initSocket(httpServer, allowedOrigins);
+
 // Connexion MongoDB + lancement serveur
 mongoose
   .connect(getMongoUri())
   .then(async () => {
-    // Validate read access early so auth issues are caught at startup.
     const db = mongoose.connection.db;
     if (!db) {
       throw new Error("Connexion MongoDB établie mais base de données indisponible.");
@@ -89,7 +94,7 @@ mongoose
     await db.collection("users").findOne({});
     console.log("MongoDB connected");
 
-    app.listen(PORT, () => {
+    httpServer.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });
   })
