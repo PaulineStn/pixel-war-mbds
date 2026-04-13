@@ -38,11 +38,86 @@ Application web collaborative permettant à plusieurs utilisateurs de dessiner e
   - Export du board (image / JSON)
 
 - Architecture Monorepo avec séparation front back
+    /client → Frontend (React + Vite)
+    /api → Backend (Node.js + Express)
+Base de données : MongoDB (Docker)
+Communication temps réel : WebSocket (Socket.IO)
 
 
-Auteurs : 
-- ZENNANI Farid 
-- STEICHEN Pauline
-- VANDAMME Clément 
-- AAROUR Mouna
+## Première configuration
+
+## Installation
+git clone https://github.com/PaulineStn/pixel-war-mbds.git
+cd pixel-war-mbds
+
+Dans le répertoire racine du projet :
+- Lancer MongoDB avec Docker
+```bash
+docker compose up -d
+```
+- Puis installer les dépendances
+```bash
+cd api/
+npm install
+```
+puis : 
+```bash
+cd client/
+npm install
+```
+- Configurer les variables d’environnement : Créer un fichier .env dans /api : (exemple dans le .env.example)
+```bash
+PORT=3000
+MONGO_URI=mongodb://pixel_admin:pixel_admin_pwd@localhost:27017/pixel-war?authSource=admin
+JWT_SECRET=your_secret_key
+```
+
+## Lancer le projet
+
+### Les deux en même temps
+côté api : 
+```bash
+cd api/
+npm run dev
+```
+côté client 
+```bash
+cd client/
+npm run dev
+```
+
+### Séparément (dans deux terminaux distincts)
+
+| Service | URL par défaut       |
+| ------- | --------------------- |
+| Client  | http://localhost:5173 |
+| API     | http://localhost:3000 |
+
+
+## Auteurs et Répartition des tâches
+### ZENNANI Farid
+- GitHub : Faridzen
+- Tâches :
+
+### STEICHEN Pauline
+- GitHub : PaulineStn
+- Tâches :
+    - mise en place initiale du repo et architecture back/front
+    - implémentation de l'authentification avec jwt
+    - mise en place des pages home, connexion, création de compte, profile
+    - implémentation de l'interace utilisateur sur les pages
+
+### VANDAMME Clément
+- GitHub : Nassco
+- Tâches :
+
+### AAROUR Mouna
+- GitHub : mounaAar
+- Tâches :
+    - gestion des rôles et accès administrateur
+    - implémentation seed d'un compte admin au démarrage
+    - implémentation des pixels boards avec canvas intéractif
+    - alimentation des pages home, profile
+
+
 
