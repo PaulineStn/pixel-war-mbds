@@ -1,31 +1,51 @@
-import type { PixelWar } from '../types/app'
+import type { Board } from '../types/app'
 
 type WarCardProps = {
-  war: PixelWar
+  board: Board
   featured?: boolean
+  onClick?: () => void
 }
 
-export function WarCard({ war, featured = false }: WarCardProps) {
+export function WarCard({ board, featured = false, onClick }: WarCardProps) {
   const cardClassName = 'war-card' + (featured ? ' featured' : '')
+  const isActive = board.status === 'active' && new Date(board.endDate) > new Date()
+
+  const timeRemaining = () => {
+    const diff = new Date(board.endDate).getTime() - Date.now()
+    if (diff <= 0) return 'Terminé'
+    const h = Math.floor(diff / 3600000)
+    const m = Math.floor((diff % 3600000) / 60000)
+    return `${h}h ${m}m`
+  }
 
   return (
-    <article className={cardClassName}>
-      {war.label && <p className="card-tag">{war.label}</p>}
-      <h3>{war.codeName}</h3>
-      <p className="card-subtitle">{war.subtitle}</p>
+    <article className={cardClassName} onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
+      {isActive && <p className="card-tag">LIVE</p>}
+      <h3>{board.title ?? 'Sans titre'}</h3>
+      <p className="card-subtitle">
+        Par {board.author?.username ?? '?'} — {board.width}×{board.height} pixels
+      </p>
       <div className="card-stats">
         <span>
-          <strong>{war.pixels}</strong> PIXELS
+          Cooldown : <strong>{board.cooldown}s</strong>
         </span>
-        <span>{war.players} JOUEURS</span>
+        <span>{board.allowOverwrite ? 'Overwrite ON' : 'Overwrite OFF'}</span>
       </div>
+      {isActive && (
+        <div className="card-stats">
+          <span>⏱ {timeRemaining()}</span>
+        </div>
+      )}
       <div className="card-actions">
-        <button className="btn btn-ghost" type="button">
-          VIEW ARCHIVE
-        </button>
-        <button className="btn btn-primary" type="button">
-          JOIN WAR
-        </button>
+        {isActive ? (
+          <button className="btn btn-primary" type="button" onClick={onClick}>
+            REJOINDRE
+          </button>
+        ) : (
+          <button className="btn btn-ghost" type="button" onClick={onClick}>
+            VOIR L'ARCHIVE
+          </button>
+        )}
       </div>
     </article>
   )

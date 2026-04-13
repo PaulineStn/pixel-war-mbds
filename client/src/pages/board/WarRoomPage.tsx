@@ -1,68 +1,51 @@
+import { useEffect, useState } from 'react'
 import { ThemeToggleButton } from '../../components/ThemeToggleButton'
 import { WarCard } from '../../components/WarCard'
 import { useAuth } from '../../hooks/useAuth'
-import type { PixelWar, Theme } from '../../types/app'
+import type { Board, BoardStats, Theme } from '../../types/app'
+import { getBoards, getBoardStats } from '../../lib/boards'
 
 type WarRoomPageProps = {
   theme: Theme
   onToggleTheme: () => void
+  onOpenBoard: (boardId: string) => void
 }
 
-const activeWars: PixelWar[] = [
-  {
-    id: 1,
-    codeName: 'CYBER_CITADEL_V4',
-    subtitle: 'Frontier sud sous pression. Renforts requis.',
-    pixels: '1,429,082',
-    players: 4210,
-    status: 'active',
-    label: 'LIVE_CONFLICT',
-  },
-  {
-    id: 2,
-    codeName: 'NEON_VOID',
-    subtitle: 'Secteur noyau en montee de trafic.',
-    pixels: '452,100',
-    players: 1288,
-    status: 'active',
-    label: 'MOST_ACTIVE',
-  },
-]
+export function WarRoomPage({ theme, onToggleTheme, onOpenBoard }: WarRoomPageProps) {
+  const { isLoggedIn, logout, session } = useAuth()
+  const [boards, setBoards] = useState<Board[]>([])
+  const [stats, setStats] = useState<BoardStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<'all' | 'active' | 'finished'>('all')
 
-const archivedWars: PixelWar[] = [
-  {
-    id: 3,
-    codeName: 'FRAGMENT_SQUAD',
-    subtitle: 'Operation stabilisee apres 72h de conflit.',
-    pixels: '128,900',
-    players: 640,
-    status: 'finished',
-  },
-  {
-    id: 4,
-    codeName: 'ORIGIN_ZERO',
-    subtitle: 'Session close, replay disponible.',
-    pixels: '1,000,000',
-    players: 3920,
-    status: 'finished',
-  },
-  {
-    id: 5,
-    codeName: 'PLASMA_PEAK',
-    subtitle: 'Noeud capture, archive verrouillee.',
-    pixels: '890,442',
-    players: 2054,
-    status: 'finished',
-  },
-]
-
-export function WarRoomPage({ theme, onToggleTheme }: WarRoomPageProps) {
-  const { isLoggedIn, logout } = useAuth()
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [boardsData, statsData] = await Promise.all([
+          getBoards(),
+          getBoardStats(),
+        ])
+        setBoards(boardsData)
+        setStats(statsData)
+      } catch {
+        // Silently fail — boards will be empty
+      } finally {
+        setLoading(false)
+      }
+    }
+    void load()
+  }, [])
 
   const handleLogout = async () => {
     await logout()
     window.location.href = '/'
   }
+
+  const activeBoards = boards.filter((b) => b.status === 'active')
+  const finishedBoards = boards.filter((b) => b.status === 'finished')
+
+  const visibleActive = filter === 'finished' ? [] : activeBoards
+  const visibleFinished = filter === 'active' ? [] : finishedBoards
 
   return (
     <div className="app-shell">
@@ -75,8 +58,22 @@ export function WarRoomPage({ theme, onToggleTheme }: WarRoomPageProps) {
           <a className="active" href="#">
             CANVAS
           </a>
-          {isLoggedIn && <a href="/profile">MON PROFILE</a>}
+          {isLoggedIn && <a href="/profile">MON PROFIL</a>}
+          {session?.isAdmin && <a href="/admin">ADMIN</a>}
         </nav>
+
+        {stats && (
+          <div className="sidebar-stats">
+            <div className="stat-item">
+              <span className="stat-value">{stats.totalUsers}</span>
+              <span className="stat-label">utilisateurs</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{stats.totalBoards}</span>
+              <span className="stat-label">boards</span>
+            </div>
+          </div>
+        )}
       </aside>
 
       <main className="content">
@@ -102,36 +99,82 @@ export function WarRoomPage({ theme, onToggleTheme }: WarRoomPageProps) {
         </header>
 
         <section className="hero">
-          <h1>
-            WAR ZONES ACTIVES
-          </h1>
+          <h1>WAR ZONES ACTIVES</h1>
           <p>
-            Defendez votre territoire et collaborez avec votre faction pour dominer la zone.
+            Défendez votre territoire et collaborez avec votre faction pour dominer la zone.
           </p>
         </section>
 
         <section className="list-header">
-          <button className="chip active" type="button">
-            FILTER
+          <button
+            className={`chip ${filter === 'all' ? 'active' : ''}`}
+            type="button"
+            onClick={() => setFilter('all')}
+          >
+            TOUS
           </button>
-          <button className="chip" type="button">
-            MOST_ACTIVE
+          <button
+            className={`chip ${filter === 'active' ? 'active' : ''}`}
+            type="button"
+            onClick={() => setFilter('active')}
+          >
+            EN COURS
+          </button>
+          <button
+            className={`chip ${filter === 'finished' ? 'active' : ''}`}
+            type="button"
+            onClick={() => setFilter('finished')}
+          >
+            TERMINÉS
           </button>
         </section>
 
-        <section className="grid-main">
-          <WarCard war={activeWars[0]} featured />
-          <WarCard war={activeWars[1]} />
-        </section>
+        {loading && <p className="boards-loading">Chargement des boards...</p>}
 
-        <section className="archive-section">
-          <h2>PIXEL WARS TERMINES</h2>
-          <div className="grid-archive">
-            {archivedWars.map((war) => (
-              <WarCard key={war.id} war={war} />
-            ))}
-          </div>
-        </section>
+        {!loading && boards.length === 0 && (
+          <p className="boards-empty">Aucun PixelBoard pour l'instant.</p>
+        )}
+
+        {visibleActive.length > 0 && (
+          <>
+            <section className="grid-main">
+              {visibleActive.slice(0, 2).map((board, i) => (
+                <WarCard
+                  key={board._id}
+                  board={board}
+                  featured={i === 0}
+                  onClick={() => onOpenBoard(board._id)}
+                />
+              ))}
+            </section>
+            {visibleActive.length > 2 && (
+              <div className="grid-archive">
+                {visibleActive.slice(2).map((board) => (
+                  <WarCard
+                    key={board._id}
+                    board={board}
+                    onClick={() => onOpenBoard(board._id)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {visibleFinished.length > 0 && (
+          <section className="archive-section">
+            <h2>PIXEL WARS TERMINÉS</h2>
+            <div className="grid-archive">
+              {visibleFinished.map((board) => (
+                <WarCard
+                  key={board._id}
+                  board={board}
+                  onClick={() => onOpenBoard(board._id)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   )

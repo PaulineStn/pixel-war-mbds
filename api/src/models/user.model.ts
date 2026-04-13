@@ -4,6 +4,7 @@ export interface IUser extends Document {
   username: string;
   email: string;
   password: string;
+  isAdmin: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,6 +30,10 @@ const userSchema = new Schema<IUser>(
       required: true,
       minlength: 6,
       select: false,
+    },
+    isAdmin: {
+      type: Boolean,
+      default: false,
     },
   },
   {

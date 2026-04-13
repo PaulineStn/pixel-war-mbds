@@ -10,6 +10,7 @@ type AuthApiResponse = {
     _id?: string
     username: string
     email: string
+    isAdmin?: boolean
   }
 }
 
@@ -18,6 +19,7 @@ const sessionFromApiResponse = (data: AuthApiResponse): AuthSession => ({
   username: data.user.username,
   email: data.user.email,
   token: data.token,
+  isAdmin: (data.user as { isAdmin?: boolean }).isAdmin ?? false,
 })
 
 const authHeader = (token: string) => ({
@@ -133,13 +135,14 @@ export async function getCurrentAuthUser(token: string): Promise<AuthSession> {
     throw new Error('Session utilisateur introuvable.')
   }
 
-  const user = (await response.json()) as { _id?: string; id?: string; username: string; email: string }
+  const user = (await response.json()) as { _id?: string; id?: string; username: string; email: string; isAdmin?: boolean }
 
   return {
     id: user.id ?? user._id ?? '',
     username: user.username,
     email: user.email,
     token,
+    isAdmin: user.isAdmin ?? false,
   }
 }
 
@@ -152,4 +155,21 @@ export async function logoutUser(token: string): Promise<void> {
   if (!response.ok) {
     throw new Error('Erreur lors de la deconnexion.')
   }
+}
+
+export type Contributions = {
+  totalPixels: number
+  boards: { _id: string; title?: string; status: string }[]
+}
+
+export async function getContributions(token: string): Promise<Contributions> {
+  const response = await fetch(`${API_BASE_URL}/auth/me/contributions`, {
+    headers: authHeader(token),
+  })
+
+  if (!response.ok) {
+    throw new Error('Erreur lors de la récupération des contributions.')
+  }
+
+  return response.json() as Promise<Contributions>
 }
