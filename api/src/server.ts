@@ -2,11 +2,13 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import bcrypt from "bcryptjs";
 import { createServer } from "node:http";
 import userRouter from "./routes/auth.routes";
 import boardRouter from "./routes/board.routes";
 import pixelRouter from "./routes/pixel.routes";
 import { initSocket } from "./socket";
+import { UserModel } from "./models/user.model";
 
 dotenv.config();
 
@@ -91,8 +93,18 @@ mongoose
     if (!db) {
       throw new Error("Connexion MongoDB établie mais base de données indisponible.");
     }
-    await db.collection("users").findOne({});
     console.log("MongoDB connected");
+
+    // Seed admin user
+    const adminEmail = process.env.ADMIN_EMAIL ?? "admin@admin.com";
+    const adminPassword = process.env.ADMIN_PASSWORD ?? "admin123";
+    const adminUsername = process.env.ADMIN_USERNAME ?? "admin";
+    const existing = await UserModel.findOne({ email: adminEmail });
+    if (!existing) {
+      const hashed = await bcrypt.hash(adminPassword, 10);
+      await UserModel.create({ username: adminUsername, email: adminEmail, password: hashed, isAdmin: true });
+      console.log(`Admin créé: ${adminEmail}`);
+    }
 
     httpServer.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
