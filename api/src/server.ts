@@ -3,6 +3,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { createServer } from "node:http";
+import path from "node:path";
 import userRouter from "./routes/auth.routes";
 import boardRouter from "./routes/board.routes";
 import pixelRouter from "./routes/pixel.routes";
@@ -77,12 +78,15 @@ app.use("/auth", userRouter);
 app.use("/boards", boardRouter);
 app.use("/boards/:id/pixels", pixelRouter);
 
-app.get("/", (_req, res) => {
-  res.send("API Pixel War running");
-});
-
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
+});
+
+// Serve React build in production
+const clientDist = path.join(__dirname, "../../client/dist");
+app.use(express.static(clientDist));
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(clientDist, "index.html"));
 });
 
 // Créer le serveur HTTP et y attacher Socket.io
