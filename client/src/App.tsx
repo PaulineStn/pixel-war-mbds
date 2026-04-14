@@ -7,6 +7,7 @@ import { ProfilePage } from './pages/profile/ProfilePage'
 import { WarRoomPage } from './pages/board/WarRoomPage'
 import { PixelBoardPage } from './pages/board/PixelBoardPage'
 import { AdminPage } from './pages/admin/AdminPage'
+import { NotFoundPage } from './pages/NotFoundPage'
 import type { Theme } from './types/app'
 
 const THEME_STORAGE_KEY = 'pixel-war-theme'
@@ -46,6 +47,7 @@ function AppRoutes() {
       <Route path="/board/:id" element={
         <BoardRouteWrapper />
       } />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
 }
