@@ -2,13 +2,13 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import bcrypt from "bcryptjs";
 import { createServer } from "node:http";
 import userRouter from "./routes/auth.routes";
 import boardRouter from "./routes/board.routes";
 import pixelRouter from "./routes/pixel.routes";
 import { initSocket } from "./socket";
 import { UserModel } from "./models/user.model";
+import { hashPassword } from "./services/auth.service";
 
 dotenv.config();
 
@@ -37,15 +37,19 @@ const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...envAllow
 
 const getMongoUri = () => {
   if (MONGODB_URI) {
+    console.log("Using MONGODB_URI from env");
     return MONGODB_URI;
   }
 
   if (MONGODB_USER && MONGODB_PASSWORD) {
     const username = encodeURIComponent(MONGODB_USER);
     const password = encodeURIComponent(MONGODB_PASSWORD);
-    return `mongodb://${username}:${password}@${MONGODB_HOST}:${MONGODB_PORT}/${MONGODB_DB}?authSource=admin`;
+    const uri = `mongodb://${username}:${password}@${MONGODB_HOST}:${MONGODB_PORT}/${MONGODB_DB}?authSource=admin`;
+    console.log("Using constructed URI:", uri);
+    return uri;
   }
 
+  console.log("Using default URI without auth");
   return `mongodb://${MONGODB_HOST}:${MONGODB_PORT}/${MONGODB_DB}`;
 };
 
@@ -99,9 +103,10 @@ mongoose
     const adminEmail = process.env.ADMIN_EMAIL ?? "admin@admin.com";
     const adminPassword = process.env.ADMIN_PASSWORD ?? "admin123";
     const adminUsername = process.env.ADMIN_USERNAME ?? "admin";
+
     const existing = await UserModel.findOne({ email: adminEmail });
     if (!existing) {
-      const hashed = await bcrypt.hash(adminPassword, 10);
+      const hashed = await hashPassword(adminPassword);
       await UserModel.create({ username: adminUsername, email: adminEmail, password: hashed, isAdmin: true });
       console.log(`Admin créé: ${adminEmail}`);
     }

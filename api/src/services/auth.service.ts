@@ -30,7 +30,7 @@ interface CreateUserInput {
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 const normalizeUsername = (username: string) => username.trim();
 
-const hashPassword = async (password: string) => {
+export const hashPassword = async (password: string) => {
   const salt = randomBytes(16).toString("hex");
   const key = (await scrypt(password, salt, SCRYPT_KEY_LEN)) as Buffer;
   return `${salt}:${key.toString("hex")}`;
