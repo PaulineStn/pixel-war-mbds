@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 
 export function RegisterPage() {
   const { register } = useAuth()
+  const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -11,25 +13,26 @@ export function RegisterPage() {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const closeAuth = () => {
+  const closeRegister = () => {
     if (window.history.length > 1) {
-      window.history.back()
+      navigate(-1)
       return
     }
 
-    window.location.href = '/'
+    navigate('/')
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
+    setIsSubmitting(true)
 
     if (password !== confirmPassword) {
       setError('Les mots de passe ne correspondent pas.')
+      setIsSubmitting(false)
       return
     }
 
-    setIsSubmitting(true)
     const result = await register(username, email, password)
     if (!result.ok) {
       setError(result.error)
@@ -37,11 +40,11 @@ export function RegisterPage() {
       return
     }
 
-    window.location.href = '/profile'
+    navigate('/profile')
   }
 
   return (
-    <main className="auth-page" onClick={closeAuth}>
+    <main className="auth-page auth-page-register" onClick={closeRegister}>
       <div className="auth-glow auth-glow-left" aria-hidden="true" />
       <div className="auth-glow auth-glow-right" aria-hidden="true" />
 
@@ -49,7 +52,7 @@ export function RegisterPage() {
         <button
           className="auth-close"
           type="button"
-          onClick={closeAuth}
+          onClick={closeRegister}
           aria-label="Fermer et revenir"
         >
           ×
@@ -110,12 +113,12 @@ export function RegisterPage() {
           {error && <p className="auth-error">{error}</p>}
 
           <button className="btn btn-primary auth-submit" type="submit" disabled={isSubmitting}>
-            CREATE ACCOUNT
+            REJOINDRE LA FACTION
           </button>
         </form>
 
         <div className="auth-links">
-          <a href="/auth">ALREADY REGISTERED</a>
+          <Link to="/auth">ALREADY REGISTERED</Link>
           <a href="#">FORGOT PASSWORD</a>
         </div>
       </section>

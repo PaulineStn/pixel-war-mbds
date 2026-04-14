@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { ThemeToggleButton } from '../../components/ThemeToggleButton'
 import { useAuth } from '../../hooks/useAuth'
 import type { Theme } from '../../types/app'
@@ -11,12 +12,13 @@ type ProfilePageProps = {
 
 export function ProfilePage({ theme, onToggleTheme }: ProfilePageProps) {
   const { isLoggedIn, logout, session } = useAuth()
+  const navigate = useNavigate()
   const [contributions, setContributions] = useState<Contributions | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!session) {
-      window.location.href = '/auth'
+      navigate('/auth')
       return
     }
 
@@ -24,11 +26,11 @@ export function ProfilePage({ theme, onToggleTheme }: ProfilePageProps) {
       .then(setContributions)
       .catch(() => setContributions({ totalPixels: 0, boards: [] }))
       .finally(() => setLoading(false))
-  }, [session?.id])
+  }, [session?.id, navigate])
 
   const handleLogout = async () => {
     await logout()
-    window.location.href = '/'
+    navigate('/')
   }
 
   return (
@@ -39,13 +41,13 @@ export function ProfilePage({ theme, onToggleTheme }: ProfilePageProps) {
         </div>
 
         <nav>
-          <a href="/">CANVAS</a>
+          <Link to="/">CANVAS</Link>
           {isLoggedIn && (
-            <a className="active" href="/profile">
+            <Link className="active" to="/profile">
               MON PROFIL
-            </a>
+            </Link>
           )}
-          {session?.isAdmin && <a href="/admin">ADMIN</a>}
+          {session?.isAdmin && <Link to="/admin">ADMIN</Link>}
         </nav>
       </aside>
 
@@ -58,9 +60,9 @@ export function ProfilePage({ theme, onToggleTheme }: ProfilePageProps) {
                 SE DECONNECTER
               </button>
             ) : (
-              <a className="auth-cta" href="/auth">
+              <Link className="auth-cta" to="/auth">
                 S'AUTHENTIFIER
-              </a>
+              </Link>
             )}
           </div>
         </header>
@@ -99,9 +101,9 @@ export function ProfilePage({ theme, onToggleTheme }: ProfilePageProps) {
                 <ul>
                   {contributions.boards.map((board) => (
                     <li key={board._id}>
-                      <a href={`/board/${board._id}`}>
+                      <Link to={`/board/${board._id}`}>
                         {board.title ?? 'Sans titre'}
-                      </a>
+                      </Link>
                       <span className={`board-status ${board.status}`}>
                         {board.status === 'active' ? 'EN COURS' : 'TERMINÉ'}
                       </span>
@@ -111,7 +113,7 @@ export function ProfilePage({ theme, onToggleTheme }: ProfilePageProps) {
               ) : (
                 <p className="boards-empty">
                   Tu n'as pas encore participé à un PixelBoard.{' '}
-                  <a href="/">Rejoins-en un !</a>
+                  <Link to="/">Rejoins-en un !</Link>
                 </p>
               )}
             </section>

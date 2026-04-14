@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 
 export function AuthPage() {
   const { login } = useAuth()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -11,11 +13,11 @@ export function AuthPage() {
 
   const closeAuth = () => {
     if (window.history.length > 1) {
-      window.history.back()
+      navigate(-1)
       return
     }
 
-    window.location.href = '/'
+    navigate('/')
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -30,7 +32,7 @@ export function AuthPage() {
       return
     }
 
-    window.location.href = '/profile'
+    navigate('/profile')
   }
 
   return (
@@ -82,7 +84,7 @@ export function AuthPage() {
         </form>
 
         <div className="auth-links">
-          <a href="/register">CREATE ACCOUNT</a>
+          <Link to="/register">CREATE ACCOUNT</Link>
           <a href="#">FORGOT PASSWORD</a>
         </div>
       </section>

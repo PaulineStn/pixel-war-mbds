@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import type { Board, Pixel } from '../../types/app'
 import { getBoardById, getPixels, placePixel, getHeatmap, type HeatmapPixel } from '../../lib/boards'
 import { getAuthSession } from '../../lib/auth'
@@ -358,7 +359,7 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
         <div className="board-palette-bar">
           {!session && (
             <span className="board-palette-hint">
-              <a href="/auth">Connecte-toi</a> pour dessiner
+              <Link to="/auth">Connecte-toi</Link> pour dessiner
             </span>
           )}
           {session && (
