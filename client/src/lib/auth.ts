@@ -116,13 +116,14 @@ export async function getAuthUserByEmail(email: string, token: string): Promise<
     throw new Error('Utilisateur introuvable.')
   }
 
-  const user = (await response.json()) as { _id?: string; id?: string; username: string; email: string }
+  const user = (await response.json()) as { _id?: string; id?: string; username: string; email: string; isAdmin?: boolean }
 
   return {
     id: user.id ?? user._id ?? '',
     username: user.username,
     email: user.email,
     token,
+    isAdmin: user.isAdmin ?? false,
   }
 }
 
