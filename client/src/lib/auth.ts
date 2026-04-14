@@ -129,7 +129,7 @@ export async function logoutUser(_token?: string): Promise<void> {
 
 export type Contributions = {
   totalPixels: number
-  boards: { _id: string; title?: string; status: string }[]
+  boards: { _id: string; title?: string; status: string; endDate: string }[]
 }
 
 export async function getContributions(_token?: string): Promise<Contributions> {

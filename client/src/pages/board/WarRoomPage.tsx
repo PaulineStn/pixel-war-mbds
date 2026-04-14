@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ThemeToggleButton } from '../../components/ThemeToggleButton'
@@ -17,6 +17,14 @@ export function WarRoomPage({ theme, onToggleTheme, onOpenBoard }: WarRoomPagePr
   const { isLoggedIn, logout, session } = useAuth()
   const navigate = useNavigate()
   const [filter, setFilter] = useState<'all' | 'active' | 'finished'>('all')
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now())
+    }, 60000)
+    return () => clearInterval(timer)
+  }, [])
 
   const { data: boards = [], isLoading: loadingBoards } = useQuery({
     queryKey: ['boards'],
@@ -35,8 +43,8 @@ export function WarRoomPage({ theme, onToggleTheme, onOpenBoard }: WarRoomPagePr
     navigate('/')
   }
 
-  const activeBoards = boards.filter((b) => b.status === 'active')
-  const finishedBoards = boards.filter((b) => b.status === 'finished')
+  const activeBoards = boards.filter((b) => b.status === 'active' && new Date(b.endDate).getTime() > now)
+  const finishedBoards = boards.filter((b) => b.status === 'finished' || (b.status === 'active' && new Date(b.endDate).getTime() <= now))
 
   const visibleActive = filter === 'finished' ? [] : activeBoards
   const visibleFinished = filter === 'active' ? [] : finishedBoards

@@ -30,6 +30,14 @@ export function AdminPage({ onBack, theme, onToggleTheme }: AdminPageProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now())
+    }, 60000)
+    return () => clearInterval(timer)
+  }, [])
 
   const { data: boards = [], isLoading } = useQuery({
     queryKey: ['boards'],
@@ -282,34 +290,38 @@ export function AdminPage({ onBack, theme, onToggleTheme }: AdminPageProps) {
               </tr>
             </thead>
             <tbody>
-              {boards.map((board) => (
-                <tr key={board._id} className={editingId === board._id ? 'editing' : ''}>
-                  <td>{board.title ?? <em>Sans titre</em>}</td>
-                  <td>
-                    <span className={`board-status ${board.status}`}>
-                      {board.status === 'active' ? 'EN COURS' : 'TERMINÉ'}
-                    </span>
-                  </td>
-                  <td>{board.width}×{board.height}</td>
-                  <td>{board.cooldown}s</td>
-                  <td>{board.allowOverwrite ? '✓' : '✗'}</td>
-                  <td>{new Date(board.endDate).toLocaleDateString()}</td>
-                  <td className="admin-actions">
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => handleEdit(board)}
-                    >
-                      MODIFIER
-                    </button>
-                    <button
-                      className="btn btn-danger btn-sm"
-                      onClick={() => handleDelete(board._id)}
-                    >
-                      SUPPRIMER
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {boards.map((board) => {
+                const isActive = board.status === 'active' && new Date(board.endDate).getTime() > now
+
+                return (
+                  <tr key={board._id} className={editingId === board._id ? 'editing' : ''}>
+                    <td>{board.title ?? <em>Sans titre</em>}</td>
+                    <td>
+                      <span className={`board-status ${isActive ? 'active' : 'finished'}`}>
+                        {isActive ? 'EN COURS' : 'TERMINÉ'}
+                      </span>
+                    </td>
+                    <td>{board.width}×{board.height}</td>
+                    <td>{board.cooldown}s</td>
+                    <td>{board.allowOverwrite ? '✓' : '✗'}</td>
+                    <td>{new Date(board.endDate).toLocaleDateString()}</td>
+                    <td className="admin-actions">
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => handleEdit(board)}
+                      >
+                        MODIFIER
+                      </button>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleDelete(board._id)}
+                      >
+                        SUPPRIMER
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}

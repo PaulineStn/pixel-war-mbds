@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ThemeToggleButton } from '../../components/ThemeToggleButton'
@@ -14,6 +14,14 @@ type ProfilePageProps = {
 export function ProfilePage({ theme, onToggleTheme }: ProfilePageProps) {
   const { isLoggedIn, logout, session } = useAuth()
   const navigate = useNavigate()
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now())
+    }, 60000)
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     if (!session) {
@@ -98,16 +106,21 @@ export function ProfilePage({ theme, onToggleTheme }: ProfilePageProps) {
 
               {contributions && contributions.boards.length > 0 ? (
                 <ul>
-                  {contributions.boards.map((board) => (
-                    <li key={board._id}>
-                      <Link to={`/board/${board._id}`}>
-                        {board.title ?? 'Sans titre'}
-                      </Link>
-                      <span className={`board-status ${board.status}`}>
-                        {board.status === 'active' ? 'EN COURS' : 'TERMINÉ'}
-                      </span>
-                    </li>
-                  ))}
+                  {contributions.boards.map((board) => {
+                    const hasValidDate = board.endDate ? new Date(board.endDate).getTime() : NaN;
+                    const isActive = board.status === 'active' && !isNaN(hasValidDate) && hasValidDate > now;
+
+                    return (
+                      <li key={board._id}>
+                        <Link to={`/board/${board._id}`}>
+                          {board.title ?? 'Sans titre'}
+                        </Link>
+                        <span className={`board-status ${isActive ? 'active' : 'finished'}`}>
+                          {isActive ? 'EN COURS' : 'TERMINÉ'}
+                        </span>
+                      </li>
+                    )
+                  })}
                 </ul>
               ) : (
                 <p className="boards-empty">

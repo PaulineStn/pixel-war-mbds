@@ -93,7 +93,7 @@ export const getHeatmap = async (boardId: string) => {
 export const getUserContributions = async (userId: string) => {
   const pixels = await PixelModel.find({
     placedBy: new Types.ObjectId(userId),
-  }).populate("board", "title status");
+  }).populate("board", "title status endDate");
 
   const boardMap = new Map<string, unknown>();
   for (const pixel of pixels) {
