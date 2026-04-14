@@ -83,7 +83,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 // Serve React build in production
-const clientDist = path.join(__dirname, "../../client/dist");
+const clientDist = path.join(__dirname, "public");
 app.use(express.static(clientDist));
 app.get(/(.*)/, (_req, res) => {
   res.sendFile(path.join(clientDist, "index.html"));
