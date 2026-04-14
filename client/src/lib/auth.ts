@@ -163,9 +163,11 @@ export type Contributions = {
   boards: { _id: string; title?: string; status: string }[]
 }
 
-export async function getContributions(token: string): Promise<Contributions> {
+export async function getContributions(): Promise<Contributions> {
+  const session = getAuthSession()
+  if (!session) throw new Error('Non authentifié.')
   const response = await fetch(`${API_BASE_URL}/auth/me/contributions`, {
-    headers: authHeader(token),
+    headers: authHeader(session.token),
   })
 
   if (!response.ok) {
