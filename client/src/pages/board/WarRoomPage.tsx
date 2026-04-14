@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { ThemeToggleButton } from '../../components/ThemeToggleButton'
 import { WarCard } from '../../components/WarCard'
 import { useAuth } from '../../hooks/useAuth'
-import type { Board, BoardStats, Theme } from '../../types/app'
+import type { Theme } from '../../types/app'
 import { getBoards, getBoardStats } from '../../lib/boards'
 
 type WarRoomPageProps = {
@@ -15,28 +16,19 @@ type WarRoomPageProps = {
 export function WarRoomPage({ theme, onToggleTheme, onOpenBoard }: WarRoomPageProps) {
   const { isLoggedIn, logout, session } = useAuth()
   const navigate = useNavigate()
-  const [boards, setBoards] = useState<Board[]>([])
-  const [stats, setStats] = useState<BoardStats | null>(null)
-  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'active' | 'finished'>('all')
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [boardsData, statsData] = await Promise.all([
-          getBoards(),
-          getBoardStats(),
-        ])
-        setBoards(boardsData)
-        setStats(statsData)
-      } catch {
-        // Silently fail — boards will be empty
-      } finally {
-        setLoading(false)
-      }
-    }
-    void load()
-  }, [])
+  const { data: boards = [], isLoading: loadingBoards } = useQuery({
+    queryKey: ['boards'],
+    queryFn: getBoards,
+  })
+
+  const { data: stats } = useQuery({
+    queryKey: ['boardStats'],
+    queryFn: getBoardStats,
+  })
+
+  const loading = loadingBoards
 
   const handleLogout = async () => {
     await logout()

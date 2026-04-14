@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { ThemeToggleButton } from '../../components/ThemeToggleButton'
 import { useAuth } from '../../hooks/useAuth'
 import type { Theme } from '../../types/app'
-import { getContributions, type Contributions } from '../../lib/auth'
+import { getContributions } from '../../lib/auth'
 
 type ProfilePageProps = {
   theme: Theme
@@ -13,20 +14,18 @@ type ProfilePageProps = {
 export function ProfilePage({ theme, onToggleTheme }: ProfilePageProps) {
   const { isLoggedIn, logout, session } = useAuth()
   const navigate = useNavigate()
-  const [contributions, setContributions] = useState<Contributions | null>(null)
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!session) {
       navigate('/auth')
-      return
     }
+  }, [session, navigate])
 
-    getContributions(session.token)
-      .then(setContributions)
-      .catch(() => setContributions({ totalPixels: 0, boards: [] }))
-      .finally(() => setLoading(false))
-  }, [session?.id, navigate])
+  const { data: contributions, isLoading: loading } = useQuery({
+    queryKey: ['contributions'],
+    queryFn: () => getContributions(),
+    enabled: !!session,
+  })
 
   const handleLogout = async () => {
     await logout()

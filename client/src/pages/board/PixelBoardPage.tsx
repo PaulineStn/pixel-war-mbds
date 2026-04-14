@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import type { Board, Pixel } from '../../types/app'
+import { useQuery } from '@tanstack/react-query'
+import type { Pixel } from '../../types/app'
 import { getBoardById, getPixels, placePixel, getHeatmap, type HeatmapPixel } from '../../lib/boards'
 import { getAuthSession } from '../../lib/auth'
 import { useSocket } from '../../hooks/useSocket'
@@ -23,18 +24,40 @@ type PixelBoardPageProps = {
 
 export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [board, setBoard] = useState<Board | null>(null)
   const [pixels, setPixels] = useState<Pixel[]>([])
   const [selectedColor, setSelectedColor] = useState(PALETTE[12])
   const [tooltip, setTooltip] = useState<Tooltip>(null)
   const [cooldownRemaining, setCooldownRemaining] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
   const [showHeatmap, setShowHeatmap] = useState(false)
   const [heatmapData, setHeatmapData] = useState<HeatmapPixel[]>([])
+  const [now, setNow] = useState(() => Date.now())
   const pixelsMapRef = useRef<Map<string, Pixel>>(new Map())
 
   const session = getAuthSession()
+
+  const { data: board, isLoading: loadingBoard } = useQuery({
+    queryKey: ['board', boardId],
+    queryFn: () => getBoardById(boardId),
+  })
+
+  const { isLoading: loadingPixels } = useQuery({
+    queryKey: ['pixels', boardId],
+    queryFn: async () => {
+      const data = await getPixels(boardId)
+      setPixels(data)
+      const map = new Map<string, Pixel>()
+      for (const p of data) {
+        map.set(`${p.x},${p.y}`, p)
+      }
+      pixelsMapRef.current = map
+      return data
+    },
+    // Run only once to seed the custom state, socket will handle the rest
+    staleTime: Infinity,
+  })
+
+  const loading = loadingBoard || loadingPixels
 
   // Callback appelé par le socket quand un autre utilisateur place un pixel
   const handleRemotePixel = useCallback((pixel: Pixel) => {
@@ -52,30 +75,6 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
   }, [])
 
   useSocket({ boardId, onPixelPlaced: handleRemotePixel })
-
-  // Load board and pixels
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [boardData, pixelsData] = await Promise.all([
-          getBoardById(boardId),
-          getPixels(boardId),
-        ])
-        setBoard(boardData)
-        setPixels(pixelsData)
-        const map = new Map<string, Pixel>()
-        for (const p of pixelsData) {
-          map.set(`${p.x},${p.y}`, p)
-        }
-        pixelsMapRef.current = map
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Erreur de chargement.')
-      } finally {
-        setLoading(false)
-      }
-    }
-    void load()
-  }, [boardId])
 
   // Draw canvas
   useEffect(() => {
@@ -129,10 +128,17 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
     return () => clearInterval(interval)
   }, [cooldownRemaining])
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now())
+    }, 60000)
+    return () => clearInterval(timer)
+  }, [])
+
   // Time remaining on board
   const getTimeRemaining = () => {
     if (!board) return ''
-    const diff = new Date(board.endDate).getTime() - Date.now()
+    const diff = new Date(board.endDate).getTime() - now
     if (diff <= 0) return 'Terminé'
     const h = Math.floor(diff / 3600000)
     const m = Math.floor((diff % 3600000) / 60000)
@@ -281,7 +287,7 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
     )
   }
 
-  const isActive = board.status === 'active' && new Date(board.endDate) > new Date()
+  const isActive = board.status === 'active' && new Date(board.endDate).getTime() > now
 
   return (
     <div className="board-page">

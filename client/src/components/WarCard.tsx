@@ -1,4 +1,5 @@
 import type { Board } from '../types/app'
+import { useState, useEffect } from 'react'
 
 type WarCardProps = {
   board: Board
@@ -7,11 +8,20 @@ type WarCardProps = {
 }
 
 export function WarCard({ board, featured = false, onClick }: WarCardProps) {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now())
+    }, 60000) // Update every minute
+    return () => clearInterval(timer)
+  }, [])
+
   const cardClassName = 'war-card' + (featured ? ' featured' : '')
-  const isActive = board.status === 'active' && new Date(board.endDate) > new Date()
+  const isActive = board.status === 'active' && new Date(board.endDate).getTime() > now
 
   const timeRemaining = () => {
-    const diff = new Date(board.endDate).getTime() - Date.now()
+    const diff = new Date(board.endDate).getTime() - now
     if (diff <= 0) return 'Terminé'
     const h = Math.floor(diff / 3600000)
     const m = Math.floor((diff % 3600000) / 60000)
