@@ -51,7 +51,7 @@ export function WarRoomPage({ theme, onToggleTheme, onOpenBoard }: WarRoomPagePr
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <img src="/gardian.svg" alt="Logo Pixel War" />
+          <img src="/gardian.png" alt="Logo Pixel War" />
         </div>
 
         <nav>

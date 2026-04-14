@@ -54,7 +54,7 @@ export function RegisterPage() {
         >
           ×
         </button>
-        <img className="auth-logo" src="/gardian.svg" alt="Pixel War" />
+        <img className="auth-logo" src="/gardian.png" alt="Pixel War" />
 
         <h1>CREATE_ACCOUNT</h1>
         <p>Cree ton operateur pour rejoindre le front Pixel War.</p>

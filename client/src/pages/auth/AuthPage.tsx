@@ -47,7 +47,7 @@ export function AuthPage() {
         >
           ×
         </button>
-        <img className="auth-logo" src="/gardian.svg" alt="Pixel War" />
+        <img className="auth-logo" src="/gardian.png" alt="Pixel War" />
 
         <h1>AUTH_GATE</h1>
         <p>Connecte-toi pour deployer tes pixels sur le front.</p>
