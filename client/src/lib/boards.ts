@@ -38,6 +38,7 @@ type CreateBoardInput = {
 }
 
 export async function createBoard(input: CreateBoardInput, _token?: string): Promise<Board> {
+  void _token
   try {
     const { data } = await api.post<Board>('/boards', {
       ...input,
@@ -58,6 +59,7 @@ export async function updateBoard(
   input: Partial<CreateBoardInput & { status: string }>,
   _token?: string,
 ): Promise<Board> {
+  void _token
   const body = { ...input, endDate: input.endDate instanceof Date ? input.endDate.toISOString() : input.endDate }
   try {
     const { data } = await api.put<Board>(`/boards/${id}`, body)
@@ -72,6 +74,7 @@ export async function updateBoard(
 }
 
 export async function deleteBoard(id: string, _token?: string): Promise<void> {
+  void _token
   try {
     await api.delete(`/boards/${id}`)
   } catch (error) {
@@ -90,6 +93,7 @@ export async function placePixel(
   color: string,
   _token?: string,
 ): Promise<Pixel> {
+  void _token
   try {
     const { data } = await api.post<Pixel>(`/boards/${boardId}/pixels`, { x, y, color })
     return data

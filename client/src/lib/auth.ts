@@ -85,6 +85,7 @@ export async function createAccount(
 }
 
 export async function getAuthUserByEmail(email: string, _token?: string): Promise<AuthSession> {
+  void _token // For linting
   try {
     const { data } = await api.get<{ _id?: string; id?: string; username: string; email: string; isAdmin?: boolean }>(
       `/auth/users/by-email?email=${encodeURIComponent(email)}`
@@ -102,6 +103,7 @@ export async function getAuthUserByEmail(email: string, _token?: string): Promis
 }
 
 export async function getCurrentAuthUser(_token?: string): Promise<AuthSession> {
+  void _token // For linting
   try {
     const { data } = await api.get<{ _id?: string; id?: string; username: string; email: string; isAdmin?: boolean }>('/auth/me')
     return {
@@ -117,6 +119,7 @@ export async function getCurrentAuthUser(_token?: string): Promise<AuthSession> 
 }
 
 export async function logoutUser(_token?: string): Promise<void> {
+  void _token // For linting
   try {
     await api.post('/auth/logout')
   } catch {
@@ -130,6 +133,7 @@ export type Contributions = {
 }
 
 export async function getContributions(_token?: string): Promise<Contributions> {
+  void _token // For linting
   try {
     const { data } = await api.get<Contributions>('/auth/me/contributions')
     return data
