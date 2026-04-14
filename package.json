@@ -1,5 +1,9 @@
 {
   "dependencies": {
     "bcryptjs": "^3.0.3"
+  },
+  "scripts": {
+    "build": "npm install --prefix client && npm run build --prefix client && npm install --prefix api && npm run build --prefix api && cp -r client/dist api/dist/public",
+    "start": "npm run start --prefix api"
   }
 }
