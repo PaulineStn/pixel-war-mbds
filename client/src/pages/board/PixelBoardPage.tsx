@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import type { Pixel } from '../../types/app'
+import type { Board, Pixel } from '../../types/app'
 import { getBoardById, getPixels, placePixel, getHeatmap, type HeatmapPixel } from '../../lib/boards'
 import { getAuthSession } from '../../lib/auth'
 import { useSocket } from '../../hooks/useSocket'
@@ -49,15 +48,9 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
   const [tooltip, setTooltip] = useState<Tooltip>(null)
   const [cooldownRemaining, setCooldownRemaining] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
   const [showHeatmap, setShowHeatmap] = useState(false)
   const [heatmapData, setHeatmapData] = useState<HeatmapPixel[]>([])
-  const heatmapDataRef = useRef<HeatmapPixel[]>([])
-  const [hoveredPixel, setHoveredPixel] = useState<{ x: number; y: number } | null>(null)
-  const hoveredPixelRef = useRef<{ x: number; y: number } | null>(null)
-  const showHeatmapRef = useRef(false)
-  const [isDragging, setIsDragging] = useState(false)
-  const [now, setNow] = useState(() => Date.now())
-  const pixelsMapRef = useRef<Map<string, Pixel>>(new Map())
   const heatmapDataRef = useRef<HeatmapPixel[]>([])
   const [hoveredPixel, setHoveredPixel] = useState<{ x: number; y: number } | null>(null)
   const hoveredPixelRef = useRef<{ x: number; y: number } | null>(null)
@@ -94,57 +87,6 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-  const { data: board, isLoading: loadingBoard } = useQuery({
-    queryKey: ['board', boardId],
-    queryFn: () => getBoardById(boardId),
-  })
-
-  const { isLoading: loadingPixels } = useQuery({
-    queryKey: ['pixels', boardId],
-    queryFn: async () => {
-      const data = await getPixels(boardId)
-      setPixels(data)
-      const map = new Map<string, Pixel>()
-      for (const p of data) {
-        map.set(`${p.x},${p.y}`, p)
-      }
-      pixelsMapRef.current = map
-      return data
-    },
-    // Run only once to seed the custom state, socket will handle the rest
-    staleTime: Infinity,
-  })
-
-  const loading = loadingBoard || loadingPixels
-  const isActive = board
-    ? board.status === 'active' && new Date(board.endDate) > new Date()
-    : false
-  const isActiveRef = useRef(false)
-
-  // Keep refs in sync
-  useEffect(() => { pixelsRef.current = pixels }, [pixels])
-  useEffect(() => { selectedColorRef.current = selectedColor }, [selectedColor])
-  useEffect(() => { isActiveRef.current = isActive }, [isActive])
-  useEffect(() => { heatmapDataRef.current = heatmapData }, [heatmapData])
-  useEffect(() => { showHeatmapRef.current = showHeatmap }, [showHeatmap])
-
-  // Convert client coords → board pixel coords
-  const getBoardCoords = useCallback((clientX: number, clientY: number) => {
-    const canvas = canvasRef.current
-    if (!canvas) return null
-    const rect = canvas.getBoundingClientRect()
-    const x = Math.floor((clientX - rect.left - panRef.current.x) / (PIXEL_SIZE * zoomRef.current))
-    const y = Math.floor((clientY - rect.top - panRef.current.y) / (PIXEL_SIZE * zoomRef.current))
-    return { x, y }
-  }, [])
-
-  // Draw the board on the main canvas
-  const drawBoard = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas || !board) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
     const { x: panX, y: panY } = panRef.current
     const z = zoomRef.current
 
@@ -212,129 +154,10 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
 
     const hp = hoveredPixelRef.current
     if (!hp || hp.x < 0 || hp.x >= board.width || hp.y < 0 || hp.y >= board.height) return
-  // Callback appelé par le socket quand un autre utilisateur place un pixel
-  const handleRemotePixel = useCallback((pixel: Pixel) => {
-    const key = `${pixel.x},${pixel.y}`
-    pixelsMapRef.current.set(key, pixel)
-    setPixels((prev) => {
-      const filtered = prev.filter((p) => !(p.x === pixel.x && p.y === pixel.y))
-      return [...filtered, pixel]
-    })
-    const ctx = canvasRef.current?.getContext('2d')
-    if (ctx) {
-      ctx.fillStyle = pixel.color
-      ctx.fillRect(pixel.x * PIXEL_SIZE, pixel.y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE)
-    const { x: panX, y: panY } = panRef.current
-    const z = zoomRef.current
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.save()
-    ctx.translate(panX, panY)
-    ctx.scale(z, z)
-
-    if (showHeatmapRef.current) {
-      ctx.fillStyle = '#0a0a0a'
-      ctx.fillRect(0, 0, board.width * PIXEL_SIZE, board.height * PIXEL_SIZE)
-      const data = heatmapDataRef.current
-      if (data.length > 0) {
-        const maxCount = Math.max(...data.map((p) => p.updateCount), 1)
-        for (const { x, y, updateCount } of data) {
-          const t = updateCount / maxCount
-          const r = Math.round(255 * t)
-          const g = Math.round(255 * (1 - Math.abs(t - 0.5) * 2))
-          const b = Math.round(255 * (1 - t))
-          ctx.fillStyle = `rgb(${r},${g},${b})`
-          ctx.globalAlpha = 0.4 + 0.6 * t
-          ctx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE)
-        }
-        ctx.globalAlpha = 1
-      }
-    } else {
-      ctx.fillStyle = '#1a1a1a'
-      ctx.fillRect(0, 0, board.width * PIXEL_SIZE, board.height * PIXEL_SIZE)
-
-      // Grid only when zoomed in enough
-      if (z >= 0.8) {
-        ctx.strokeStyle = '#2a2a2a'
-        ctx.lineWidth = 0.5 / z
-        for (let x = 0; x <= board.width; x++) {
-          ctx.beginPath()
-          ctx.moveTo(x * PIXEL_SIZE, 0)
-          ctx.lineTo(x * PIXEL_SIZE, board.height * PIXEL_SIZE)
-          ctx.stroke()
-        }
-        for (let y = 0; y <= board.height; y++) {
-          ctx.beginPath()
-          ctx.moveTo(0, y * PIXEL_SIZE)
-          ctx.lineTo(board.width * PIXEL_SIZE, y * PIXEL_SIZE)
-          ctx.stroke()
-        }
-      }
-    const { x: panX, y: panY } = panRef.current
-    const z = zoomRef.current
-
-      for (const pixel of pixelsRef.current) {
-        ctx.fillStyle = pixel.color
-        ctx.fillRect(pixel.x * PIXEL_SIZE, pixel.y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE)
-      }
-    }
-
-    ctx.restore()
-  }, [board])
-
-  // Draw hover highlight on overlay canvas
-  const drawOverlay = useCallback(() => {
-    const overlay = overlayRef.current
-    if (!overlay || !board) return
-    const ctx = overlay.getContext('2d')
-    if (!ctx) return
-
-    ctx.clearRect(0, 0, overlay.width, overlay.height)
-
-    const hp = hoveredPixelRef.current
-    if (!hp || hp.x < 0 || hp.x >= board.width || hp.y < 0 || hp.y >= board.height) return
 
     const { x: panX, y: panY } = panRef.current
     const z = zoomRef.current
 
-    ctx.save()
-    ctx.translate(panX, panY)
-    ctx.scale(z, z)
-
-    const px = hp.x * PIXEL_SIZE
-    const py = hp.y * PIXEL_SIZE
-
-    if (isActiveRef.current && session) {
-      ctx.globalAlpha = 0.5
-      ctx.fillStyle = selectedColorRef.current
-      ctx.fillRect(px, py, PIXEL_SIZE, PIXEL_SIZE)
-      ctx.globalAlpha = 1
-    }
-
-    const bw = 1.5 / z
-    ctx.strokeStyle = '#ffffff'
-    ctx.lineWidth = bw
-    ctx.strokeRect(px + bw / 2, py + bw / 2, PIXEL_SIZE - bw, PIXEL_SIZE - bw)
-    const inner = 1 / z
-    ctx.strokeStyle = '#000000'
-    ctx.lineWidth = inner
-    ctx.strokeRect(px + inner * 1.5, py + inner * 1.5, PIXEL_SIZE - inner * 3, PIXEL_SIZE - inner * 3)
-
-    ctx.restore()
-  }, [board, session])
-
-  // Redraw main canvas when relevant state changes
-  useEffect(() => {
-    drawBoard()
-  }, [drawBoard, pixels, pan, zoom, showHeatmap, heatmapData])
-
-  // Redraw overlay when hover or color changes
-  useEffect(() => {
-    hoveredPixelRef.current = hoveredPixel
-    drawOverlay()
-  }, [drawOverlay, hoveredPixel, selectedColor, pan, zoom])
-
-  // Load board and pixels; set canvas size and center board
     ctx.save()
     ctx.translate(panX, panY)
     ctx.scale(z, z)
@@ -412,8 +235,6 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
     void load()
   }, [boardId])
 
-  // Wheel zoom + drag — all in one effect with DOM listeners
-  // Draw canvas
   // Wheel zoom + drag — all in one effect with DOM listeners
   useEffect(() => {
     const canvas = canvasRef.current
@@ -509,17 +330,9 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
     return () => clearInterval(interval)
   }, [cooldownRemaining])
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(Date.now())
-    }, 60000)
-    return () => clearInterval(timer)
-  }, [])
-
-  // Time remaining on board
   const getTimeRemaining = () => {
     if (!board) return ''
-    const diff = new Date(board.endDate).getTime() - now
+    const diff = new Date(board.endDate).getTime() - Date.now()
     if (diff <= 0) return 'Terminé'
     const h = Math.floor(diff / 3600000)
     const m = Math.floor((diff % 3600000) / 60000)
@@ -620,8 +433,6 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
     )
   }
 
-  const canvasCursor = isDragging ? 'grabbing' : isActive && session ? 'crosshair' : 'grab'
-  const isActive = board.status === 'active' && new Date(board.endDate).getTime() > now
   const canvasCursor = isDragging ? 'grabbing' : isActive && session ? 'crosshair' : 'grab'
 
   return (

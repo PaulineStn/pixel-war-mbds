@@ -1,7 +1,7 @@
 import type { AuthSession } from '../types/app'
-import { api } from './api'
 
 export const AUTH_STORAGE_KEY = 'pixel-war-auth-session'
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 type AuthApiResponse = {
   token: string
@@ -49,19 +49,29 @@ export function clearAuthSession(): void {
 
 export async function authenticateUser(email: string, password: string): Promise<AuthSession> {
   const normalizedEmail = email.trim().toLowerCase()
-  try {
-    const { data } = await api.post<AuthApiResponse>('/auth/login', {
-      email: normalizedEmail,
-      password
-    })
-    return sessionFromApiResponse(data)
-  } catch (error) {
-    if (error instanceof Error && 'response' in error) {
-      const axiosError = error as { response?: { data?: { message?: string } } }
-      throw new Error(axiosError.response?.data?.message ?? 'Identifiants invalides.')
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email: normalizedEmail, password }),
+  })
+
+  if (!response.ok) {
+    let apiMessage = response.status === 401 ? 'Identifiants invalides.' : 'Erreur API auth/login.'
+    try {
+      const data = (await response.json()) as { message?: string }
+      if (data.message) {
+        apiMessage = data.message
+      }
+    } catch {
+      // Fallback on generic message when response body is not JSON.
     }
-    throw new Error('Identifiants invalides.')
+    throw new Error(apiMessage)
   }
+
+  const data = (await response.json()) as AuthApiResponse
+  return sessionFromApiResponse(data)
 }
 
 export async function createAccount(
@@ -71,53 +81,41 @@ export async function createAccount(
 ): Promise<AuthSession> {
   const normalizedUsername = username.trim()
   const normalizedEmail = email.trim().toLowerCase()
+  const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ username: normalizedUsername, email: normalizedEmail, password }),
+  })
 
-  try {
-    const { data } = await api.post<AuthApiResponse>('/auth/register', {
-      username: normalizedUsername,
-      email: normalizedEmail,
-      password
-    })
-    return sessionFromApiResponse(data)
-  } catch (error) {
-    if (error instanceof Error && 'response' in error) {
-      const axiosError = error as { response?: { data?: { message?: string } } }
-      throw new Error(axiosError.response?.data?.message ?? 'Impossible de creer le compte.')
+  if (!response.ok) {
+    let apiMessage =
+      response.status === 409 ? 'Un compte existe deja avec cet email.' : 'Impossible de creer le compte.'
+    try {
+      const data = (await response.json()) as { message?: string }
+      if (data.message) {
+        apiMessage = data.message
+      }
+    } catch {
+      // Fallback on generic message when response body is not JSON.
     }
-    throw new Error('Impossible de creer le compte.')
+    throw new Error(apiMessage)
   }
+
+  const data = (await response.json()) as AuthApiResponse
+  return sessionFromApiResponse(data)
 }
 
-export async function getAuthUserByEmail(email: string, _token?: string): Promise<AuthSession> {
-  void _token // For linting
-  try {
-    const { data } = await api.get<{ _id?: string; id?: string; username: string; email: string; isAdmin?: boolean }>(
-      `/auth/users/by-email?email=${encodeURIComponent(email)}`
-    )
-    return {
-      id: data.id ?? data._id ?? '',
-      username: data.username,
-      email: data.email,
-      token: _token ?? '',
-      isAdmin: data.isAdmin ?? false,
-    }
-  } catch {
+export async function getAuthUserByEmail(email: string, token: string): Promise<AuthSession> {
+  const response = await fetch(`${API_BASE_URL}/auth/users/by-email?email=${encodeURIComponent(email)}`, {
+    headers: authHeader(token),
+  })
+
+  if (!response.ok) {
     throw new Error('Utilisateur introuvable.')
   }
-}
 
-export async function getCurrentAuthUser(_token?: string): Promise<AuthSession> {
-  void _token // For linting
-  try {
-    const { data } = await api.get<{ _id?: string; id?: string; username: string; email: string; isAdmin?: boolean }>('/auth/me')
-    return {
-      id: data.id ?? data._id ?? '',
-      username: data.username,
-      email: data.email,
-      token: _token ?? '',
-      isAdmin: data.isAdmin ?? false,
-    }
-  } catch {
   const user = (await response.json()) as { _id?: string; id?: string; username: string; email: string; isAdmin?: boolean }
 
   return {
@@ -137,13 +135,25 @@ export async function getCurrentAuthUser(token: string): Promise<AuthSession> {
   if (!response.ok) {
     throw new Error('Session utilisateur introuvable.')
   }
+
+  const user = (await response.json()) as { _id?: string; id?: string; username: string; email: string; isAdmin?: boolean }
+
+  return {
+    id: user.id ?? user._id ?? '',
+    username: user.username,
+    email: user.email,
+    token,
+    isAdmin: user.isAdmin ?? false,
+  }
 }
 
-export async function logoutUser(_token?: string): Promise<void> {
-  void _token // For linting
-  try {
-    await api.post('/auth/logout')
-  } catch {
+export async function logoutUser(token: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+    method: 'POST',
+    headers: authHeader(token),
+  })
+
+  if (!response.ok) {
     throw new Error('Erreur lors de la deconnexion.')
   }
 }
@@ -153,12 +163,12 @@ export type Contributions = {
   boards: { _id: string; title?: string; status: string }[]
 }
 
-export async function getContributions(_token?: string): Promise<Contributions> {
-  void _token // For linting
-  try {
-    const { data } = await api.get<Contributions>('/auth/me/contributions')
-    return data
-  } catch {
+export async function getContributions(token: string): Promise<Contributions> {
+  const response = await fetch(`${API_BASE_URL}/auth/me/contributions`, {
+    headers: authHeader(token),
+  })
+
+  if (!response.ok) {
     throw new Error('Erreur lors de la récupération des contributions.')
   }
 
