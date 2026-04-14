@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../hooks/useAuth'
 import type { Board } from '../../types/app'
 import { getBoards, deleteBoard, createBoard, updateBoard } from '../../lib/boards'
@@ -24,29 +25,63 @@ const emptyForm = {
 export function AdminPage({ onBack, theme, onToggleTheme }: AdminPageProps) {
   const { session, isLoggedIn, logout } = useAuth()
   const navigate = useNavigate()
-  const [boards, setBoards] = useState<Board[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
+  const { data: boards = [], isLoading } = useQuery({
+    queryKey: ['boards'],
+    queryFn: getBoards,
+    enabled: !!session?.isAdmin,
+  })
+
   useEffect(() => {
     if (!session?.isAdmin) {
       navigate('/')
-      return
     }
-    void loadBoards()
-  }, [session?.id, navigate])
+  }, [session?.isAdmin, navigate])
 
-  const loadBoards = async () => {
-    setLoading(true)
-    try {
-      setBoards(await getBoards())
-    } finally {
-      setLoading(false)
-    }
+  type NewBoardPayload = {
+    title?: string
+    width: number
+    height: number
+    allowOverwrite: boolean
+    cooldown: number
+    endDate: Date
   }
+
+  const createMutation = useMutation({
+    mutationFn: (newBoard: NewBoardPayload) => createBoard(newBoard),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['boards'] })
+      setSuccess('Board créé.')
+      setForm(emptyForm)
+      setEditingId(null)
+    },
+    onError: (err: Error) => setError(err.message),
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<NewBoardPayload & { status: string }> }) => updateBoard(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['boards'] })
+      setSuccess('Board mis à jour.')
+      setForm(emptyForm)
+      setEditingId(null)
+    },
+    onError: (err: Error) => setError(err.message),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteBoard(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['boards'] })
+      setSuccess('Board supprimé.')
+    },
+    onError: (err: Error) => setError(err.message),
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,33 +90,19 @@ export function AdminPage({ onBack, theme, onToggleTheme }: AdminPageProps) {
 
     if (!session) return
 
-    try {
-      if (editingId) {
-        await updateBoard(editingId, {
-          title: form.title || undefined,
-          width: form.width,
-          height: form.height,
-          allowOverwrite: form.allowOverwrite,
-          cooldown: form.cooldown,
-          endDate: new Date(form.endDate),
-        }, session.token)
-        setSuccess('Board mis à jour.')
-      } else {
-        await createBoard({
-          title: form.title || undefined,
-          width: form.width,
-          height: form.height,
-          allowOverwrite: form.allowOverwrite,
-          cooldown: form.cooldown,
-          endDate: new Date(form.endDate),
-        }, session.token)
-        setSuccess('Board créé.')
-      }
-      setForm(emptyForm)
-      setEditingId(null)
-      await loadBoards()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur.')
+    const payload = {
+      title: form.title || undefined,
+      width: form.width,
+      height: form.height,
+      allowOverwrite: form.allowOverwrite,
+      cooldown: form.cooldown,
+      endDate: new Date(form.endDate),
+    }
+
+    if (editingId) {
+      updateMutation.mutate({ id: editingId, data: payload })
+    } else {
+      createMutation.mutate(payload)
     }
   }
 
@@ -102,13 +123,8 @@ export function AdminPage({ onBack, theme, onToggleTheme }: AdminPageProps) {
   const handleDelete = async (id: string) => {
     if (!session) return
     if (!window.confirm('Supprimer ce board ?')) return
-    try {
-      await deleteBoard(id, session.token)
-      setBoards((prev) => prev.filter((b) => b._id !== id))
-      setSuccess('Board supprimé.')
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur lors de la suppression.')
-    }
+
+    deleteMutation.mutate(id)
   }
 
   const handleCancel = () => {
@@ -248,7 +264,7 @@ export function AdminPage({ onBack, theme, onToggleTheme }: AdminPageProps) {
       <section className="admin-list-section">
         <h2>TOUS LES BOARDS ({boards.length})</h2>
 
-        {loading ? (
+        {isLoading ? (
           <p className="boards-loading">Chargement...</p>
         ) : boards.length === 0 ? (
           <p className="boards-empty">Aucun board créé.</p>
