@@ -1,42 +1,31 @@
 import type { Board, BoardStats, Pixel } from '../types/app'
-
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
-
-const authHeader = (token: string) => ({
-  'Content-Type': 'application/json',
-  Authorization: `Bearer ${token}`,
-})
+import { api } from './api'
 
 export async function getBoards(): Promise<Board[]> {
-  const res = await fetch(`${API_BASE_URL}/boards`)
-  if (!res.ok) throw new Error('Erreur lors de la récupération des boards.')
-  return res.json() as Promise<Board[]>
+  const { data } = await api.get<Board[]>('/boards')
+  return data
 }
 
 export async function getBoardById(id: string): Promise<Board> {
-  const res = await fetch(`${API_BASE_URL}/boards/${id}`)
-  if (!res.ok) throw new Error('PixelBoard introuvable.')
-  return res.json() as Promise<Board>
+  const { data } = await api.get<Board>(`/boards/${id}`)
+  return data
 }
 
 export async function getBoardStats(): Promise<BoardStats> {
-  const res = await fetch(`${API_BASE_URL}/boards/stats`)
-  if (!res.ok) throw new Error('Erreur stats.')
-  return res.json() as Promise<BoardStats>
+  const { data } = await api.get<BoardStats>('/boards/stats')
+  return data
 }
 
 export async function getPixels(boardId: string): Promise<Pixel[]> {
-  const res = await fetch(`${API_BASE_URL}/boards/${boardId}/pixels`)
-  if (!res.ok) throw new Error('Erreur lors de la récupération des pixels.')
-  return res.json() as Promise<Pixel[]>
+  const { data } = await api.get<Pixel[]>(`/boards/${boardId}/pixels`)
+  return data
 }
 
 export type HeatmapPixel = { x: number; y: number; updateCount: number }
 
 export async function getHeatmap(boardId: string): Promise<HeatmapPixel[]> {
-  const res = await fetch(`${API_BASE_URL}/boards/${boardId}/pixels/heatmap`)
-  if (!res.ok) throw new Error('Erreur heatmap.')
-  return res.json() as Promise<HeatmapPixel[]>
+  const { data } = await api.get<HeatmapPixel[]>(`/boards/${boardId}/pixels/heatmap`)
+  return data
 }
 
 type CreateBoardInput = {
@@ -48,41 +37,49 @@ type CreateBoardInput = {
   endDate: Date
 }
 
-export async function createBoard(input: CreateBoardInput, token: string): Promise<Board> {
-  const res = await fetch(`${API_BASE_URL}/boards`, {
-    method: 'POST',
-    headers: authHeader(token),
-    body: JSON.stringify({ ...input, endDate: input.endDate.toISOString() }),
-  })
-  if (!res.ok) {
-    const data = (await res.json()) as { message?: string }
-    throw new Error(data.message ?? 'Erreur lors de la création.')
+export async function createBoard(input: CreateBoardInput, _token?: string): Promise<Board> {
+  try {
+    const { data } = await api.post<Board>('/boards', {
+      ...input,
+      endDate: input.endDate.toISOString(),
+    })
+    return data
+  } catch (error) {
+    if (error instanceof Error && 'response' in error) {
+      const axiosError = error as { response?: { data?: { message?: string } } }
+      throw new Error(axiosError.response?.data?.message ?? 'Erreur lors de la création.')
+    }
+    throw new Error('Erreur lors de la création.')
   }
-  return res.json() as Promise<Board>
 }
 
-export async function updateBoard(id: string, input: Partial<CreateBoardInput & { status: string }>, token: string): Promise<Board> {
+export async function updateBoard(
+  id: string,
+  input: Partial<CreateBoardInput & { status: string }>,
+  _token?: string,
+): Promise<Board> {
   const body = { ...input, endDate: input.endDate instanceof Date ? input.endDate.toISOString() : input.endDate }
-  const res = await fetch(`${API_BASE_URL}/boards/${id}`, {
-    method: 'PUT',
-    headers: authHeader(token),
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) {
-    const data = (await res.json()) as { message?: string }
-    throw new Error(data.message ?? 'Erreur lors de la mise à jour.')
+  try {
+    const { data } = await api.put<Board>(`/boards/${id}`, body)
+    return data
+  } catch (error) {
+    if (error instanceof Error && 'response' in error) {
+      const axiosError = error as { response?: { data?: { message?: string } } }
+      throw new Error(axiosError.response?.data?.message ?? 'Erreur lors de la mise à jour.')
+    }
+    throw new Error('Erreur lors de la mise à jour.')
   }
-  return res.json() as Promise<Board>
 }
 
-export async function deleteBoard(id: string, token: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/boards/${id}`, {
-    method: 'DELETE',
-    headers: authHeader(token),
-  })
-  if (!res.ok) {
-    const data = (await res.json()) as { message?: string }
-    throw new Error(data.message ?? 'Erreur lors de la suppression.')
+export async function deleteBoard(id: string, _token?: string): Promise<void> {
+  try {
+    await api.delete(`/boards/${id}`)
+  } catch (error) {
+    if (error instanceof Error && 'response' in error) {
+      const axiosError = error as { response?: { data?: { message?: string } } }
+      throw new Error(axiosError.response?.data?.message ?? 'Erreur lors de la suppression.')
+    }
+    throw new Error('Erreur lors de la suppression.')
   }
 }
 
@@ -91,18 +88,16 @@ export async function placePixel(
   x: number,
   y: number,
   color: string,
-  token: string,
+  _token?: string,
 ): Promise<Pixel> {
-  const res = await fetch(`${API_BASE_URL}/boards/${boardId}/pixels`, {
-    method: 'POST',
-    headers: authHeader(token),
-    body: JSON.stringify({ x, y, color }),
-  })
-
-  if (!res.ok) {
-    const data = (await res.json()) as { message?: string }
-    throw new Error(data.message ?? 'Erreur lors du placement du pixel.')
+  try {
+    const { data } = await api.post<Pixel>(`/boards/${boardId}/pixels`, { x, y, color })
+    return data
+  } catch (error) {
+    if (error instanceof Error && 'response' in error) {
+      const axiosError = error as { response?: { data?: { message?: string } } }
+      throw new Error(axiosError.response?.data?.message ?? 'Erreur lors du placement du pixel.')
+    }
+    throw new Error('Erreur lors du placement du pixel.')
   }
-
-  return res.json() as Promise<Pixel>
 }
