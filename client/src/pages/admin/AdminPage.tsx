@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import type { Board } from '../../types/app'
 import { getBoards, deleteBoard, createBoard, updateBoard } from '../../lib/boards'
@@ -22,6 +23,7 @@ const emptyForm = {
 
 export function AdminPage({ onBack, theme, onToggleTheme }: AdminPageProps) {
   const { session, isLoggedIn, logout } = useAuth()
+  const navigate = useNavigate()
   const [boards, setBoards] = useState<Board[]>([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(emptyForm)
@@ -31,11 +33,11 @@ export function AdminPage({ onBack, theme, onToggleTheme }: AdminPageProps) {
 
   useEffect(() => {
     if (!session?.isAdmin) {
-      window.location.href = '/'
+      navigate('/')
       return
     }
     void loadBoards()
-  }, [session?.id])
+  }, [session?.id, navigate])
 
   const loadBoards = async () => {
     setLoading(true)
@@ -117,7 +119,7 @@ export function AdminPage({ onBack, theme, onToggleTheme }: AdminPageProps) {
 
   const handleLogout = async () => {
     await logout()
-    window.location.href = '/'
+    navigate('/')
   }
 
   if (!session?.isAdmin) return null
@@ -129,9 +131,9 @@ export function AdminPage({ onBack, theme, onToggleTheme }: AdminPageProps) {
           <img src="/gardian.png" alt="Logo Pixel War" />
         </div>
         <nav>
-          <a href="/">CANVAS</a>
-          {isLoggedIn && <a href="/profile">MON PROFIL</a>}
-          <a className="active" href="/admin">ADMIN</a>
+          <Link to="/">CANVAS</Link>
+          {isLoggedIn && <Link to="/profile">MON PROFIL</Link>}
+          <Link className="active" to="/admin">ADMIN</Link>
         </nav>
       </aside>
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { ThemeToggleButton } from '../../components/ThemeToggleButton'
 import { WarCard } from '../../components/WarCard'
 import { useAuth } from '../../hooks/useAuth'
@@ -13,6 +14,7 @@ type WarRoomPageProps = {
 
 export function WarRoomPage({ theme, onToggleTheme, onOpenBoard }: WarRoomPageProps) {
   const { isLoggedIn, logout, session } = useAuth()
+  const navigate = useNavigate()
   const [boards, setBoards] = useState<Board[]>([])
   const [stats, setStats] = useState<BoardStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -38,7 +40,7 @@ export function WarRoomPage({ theme, onToggleTheme, onOpenBoard }: WarRoomPagePr
 
   const handleLogout = async () => {
     await logout()
-    window.location.href = '/'
+    navigate('/')
   }
 
   const activeBoards = boards.filter((b) => b.status === 'active')
@@ -55,11 +57,11 @@ export function WarRoomPage({ theme, onToggleTheme, onOpenBoard }: WarRoomPagePr
         </div>
 
         <nav>
-          <a className="active" href="#">
+          <Link className="active" to="/">
             CANVAS
-          </a>
-          {isLoggedIn && <a href="/profile">MON PROFIL</a>}
-          {session?.isAdmin && <a href="/admin">ADMIN</a>}
+          </Link>
+          {isLoggedIn && <Link to="/profile">MON PROFIL</Link>}
+          {session?.isAdmin && <Link to="/admin">ADMIN</Link>}
         </nav>
 
         {stats && (
@@ -91,9 +93,9 @@ export function WarRoomPage({ theme, onToggleTheme, onOpenBoard }: WarRoomPagePr
                 SE DECONNECTER
               </button>
             ) : (
-              <a className="auth-cta" href="/auth">
+              <Link className="auth-cta" to="/auth">
                 S'AUTHENTIFIER
-              </a>
+              </Link>
             )}
           </div>
         </header>
