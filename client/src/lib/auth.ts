@@ -22,6 +22,10 @@ const sessionFromApiResponse = (data: AuthApiResponse): AuthSession => ({
   isAdmin: (data.user as { isAdmin?: boolean }).isAdmin ?? false,
 })
 
+const authHeader = (token: string) => ({
+  Authorization: `Bearer ${token}`,
+})
+
 export function getAuthSession(): AuthSession | null {
   const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
   if (!raw) {
@@ -114,6 +118,23 @@ export async function getCurrentAuthUser(_token?: string): Promise<AuthSession> 
       isAdmin: data.isAdmin ?? false,
     }
   } catch {
+  const user = (await response.json()) as { _id?: string; id?: string; username: string; email: string; isAdmin?: boolean }
+
+  return {
+    id: user.id ?? user._id ?? '',
+    username: user.username,
+    email: user.email,
+    token,
+    isAdmin: user.isAdmin ?? false,
+  }
+}
+
+export async function getCurrentAuthUser(token: string): Promise<AuthSession> {
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    headers: authHeader(token),
+  })
+
+  if (!response.ok) {
     throw new Error('Session utilisateur introuvable.')
   }
 }
@@ -140,4 +161,6 @@ export async function getContributions(_token?: string): Promise<Contributions> 
   } catch {
     throw new Error('Erreur lors de la récupération des contributions.')
   }
+
+  return response.json() as Promise<Contributions>
 }
