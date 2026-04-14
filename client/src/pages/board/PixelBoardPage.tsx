@@ -195,7 +195,7 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
     drawOverlay()
   }, [drawOverlay, hoveredPixel, selectedColor, pan, zoom])
 
-  // Load board and pixels; set canvas size and center board
+  // Load board and pixels
   useEffect(() => {
     const load = async () => {
       try {
@@ -209,23 +209,6 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
         const map = new Map<string, Pixel>()
         for (const p of pixelsData) map.set(`${p.x},${p.y}`, p)
         pixelsMapRef.current = map
-
-        // Size canvas to fill container, center the board
-        const container = containerRef.current
-        const canvas = canvasRef.current
-        const overlay = overlayRef.current
-        if (container && canvas && overlay) {
-          const w = container.clientWidth
-          const h = container.clientHeight
-          canvas.width = w
-          canvas.height = h
-          overlay.width = w
-          overlay.height = h
-          const centerX = (w - boardData.width * PIXEL_SIZE) / 2
-          const centerY = (h - boardData.height * PIXEL_SIZE) / 2
-          panRef.current = { x: centerX, y: centerY }
-          setPan({ x: centerX, y: centerY })
-        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Erreur de chargement.')
       } finally {
@@ -234,6 +217,39 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
     }
     void load()
   }, [boardId])
+
+  // Size canvas and center board — runs after board is set and container is in the DOM
+  useEffect(() => {
+    if (!board) return
+    const container = containerRef.current
+    const canvas = canvasRef.current
+    const overlay = overlayRef.current
+    if (!container || !canvas || !overlay) return
+
+    const initialize = () => {
+      const w = container.clientWidth
+      const h = container.clientHeight
+      if (w === 0 || h === 0) return false
+      canvas.width = w
+      canvas.height = h
+      overlay.width = w
+      overlay.height = h
+      const centerX = (w - board.width * PIXEL_SIZE) / 2
+      const centerY = (h - board.height * PIXEL_SIZE) / 2
+      panRef.current = { x: centerX, y: centerY }
+      setPan({ x: centerX, y: centerY })
+      return true
+    }
+
+    if (!initialize()) {
+      // Container not yet laid out — wait for it via ResizeObserver
+      const ro = new ResizeObserver(() => {
+        if (initialize()) ro.disconnect()
+      })
+      ro.observe(container)
+      return () => ro.disconnect()
+    }
+  }, [board])
 
   // Wheel zoom + drag — all in one effect with DOM listeners
   useEffect(() => {
