@@ -782,21 +782,34 @@
 }
 
 .board-error-banner {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
   padding: 10px 24px;
   background: rgba(220, 60, 60, 0.12);
   color: #f87171;
-  border-bottom: 1px solid rgba(220, 60, 60, 0.25);
+  border-top: 1px solid rgba(220, 60, 60, 0.25);
   font-size: 0.85rem;
+  text-align: center;
+  pointer-events: none;
 }
 
 .board-cooldown {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
   padding: 8px 24px;
-  background: rgba(var(--accent-rgb, 100, 120, 255), 0.1);
+  background: rgba(var(--accent-rgb, 100, 120, 255), 0.15);
   color: var(--accent);
   font-size: 0.8rem;
   letter-spacing: 0.05em;
   text-align: center;
   border-bottom: 1px solid var(--line-soft);
+  pointer-events: none;
 }
 
 .board-canvas-wrapper {
