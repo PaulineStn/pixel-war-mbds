@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Pixel } from '../../types/app'
 import { getBoardById, getPixels, placePixel, getHeatmap, type HeatmapPixel } from '../../lib/boards'
 import { getAuthSession } from '../../lib/auth'
@@ -24,7 +24,7 @@ type PixelBoardPageProps = {
 
 export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [pixels, setPixels] = useState<Pixel[]>([])
+  const queryClient = useQueryClient()
   const [selectedColor, setSelectedColor] = useState(PALETTE[12])
   const [tooltip, setTooltip] = useState<Tooltip>(null)
   const [cooldownRemaining, setCooldownRemaining] = useState(0)
@@ -41,30 +41,26 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
     queryFn: () => getBoardById(boardId),
   })
 
-  const { isLoading: loadingPixels } = useQuery({
+  const { data: pixels = [], isLoading: loadingPixels } = useQuery({
     queryKey: ['pixels', boardId],
-    queryFn: async () => {
-      const data = await getPixels(boardId)
-      setPixels(data)
-      const map = new Map<string, Pixel>()
-      for (const p of data) {
-        map.set(`${p.x},${p.y}`, p)
-      }
-      pixelsMapRef.current = map
-      return data
-    },
-    // Run only once to seed the custom state, socket will handle the rest
-    staleTime: Infinity,
+    queryFn: () => getPixels(boardId),
+    refetchOnMount: true,
   })
+
+  useEffect(() => {
+    const map = new Map<string, Pixel>()
+    for (const p of pixels) {
+      map.set(`${p.x},${p.y}`, p)
+    }
+    pixelsMapRef.current = map
+  }, [pixels])
 
   const loading = loadingBoard || loadingPixels
 
   // Callback appelé par le socket quand un autre utilisateur place un pixel
   const handleRemotePixel = useCallback((pixel: Pixel) => {
-    const key = `${pixel.x},${pixel.y}`
-    pixelsMapRef.current.set(key, pixel)
-    setPixels((prev) => {
-      const filtered = prev.filter((p) => !(p.x === pixel.x && p.y === pixel.y))
+    queryClient.setQueryData(['pixels', boardId], (old: Pixel[] = []) => {
+      const filtered = old.filter((p) => !(p.x === pixel.x && p.y === pixel.y))
       return [...filtered, pixel]
     })
     const ctx = canvasRef.current?.getContext('2d')
@@ -72,7 +68,7 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
       ctx.fillStyle = pixel.color
       ctx.fillRect(pixel.x * PIXEL_SIZE, pixel.y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE)
     }
-  }, [])
+  }, [queryClient, boardId])
 
   useSocket({ boardId, onPixelPlaced: handleRemotePixel })
 
@@ -162,11 +158,9 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
         setError(null)
         const newPixel = await placePixel(boardId, x, y, selectedColor, session.token)
 
-        // Update map and pixels list
-        const key = `${x},${y}`
-        pixelsMapRef.current.set(key, newPixel)
-        setPixels((prev) => {
-          const filtered = prev.filter((p) => !(p.x === x && p.y === y))
+        // Update map and query data list
+        queryClient.setQueryData(['pixels', boardId], (old: Pixel[] = []) => {
+          const filtered = old.filter((p) => !(p.x === x && p.y === y))
           return [...filtered, newPixel]
         })
 

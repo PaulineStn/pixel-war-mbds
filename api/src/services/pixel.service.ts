@@ -96,15 +96,23 @@ export const getUserContributions = async (userId: string) => {
   }).populate("board", "title status endDate");
 
   const boardMap = new Map<string, unknown>();
+  let validPixelsCount = 0;
+
   for (const pixel of pixels) {
-    const boardId = pixel.board.toString();
+    if (!pixel.board) continue; // Ignorer si le board a été supprimé
+
+    validPixelsCount++;
+    const boardId = (pixel.board as any)._id
+      ? (pixel.board as any)._id.toString()
+      : pixel.board.toString();
+
     if (!boardMap.has(boardId)) {
       boardMap.set(boardId, pixel.board);
     }
   }
 
   return {
-    totalPixels: pixels.length,
+    totalPixels: validPixelsCount,
     boards: Array.from(boardMap.values()),
   };
 };

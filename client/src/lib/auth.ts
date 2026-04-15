@@ -137,7 +137,8 @@ export async function getContributions(_token?: string): Promise<Contributions> 
   try {
     const { data } = await api.get<Contributions>('/auth/me/contributions')
     return data
-  } catch {
+  } catch (error) {
+    console.error("Fetch contributions error:", error);
     throw new Error('Erreur lors de la récupération des contributions.')
   }
 }
