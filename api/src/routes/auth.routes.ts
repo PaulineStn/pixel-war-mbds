@@ -113,9 +113,12 @@ router.get(
   requireAuth,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
+      console.log(`[/me/contributions] User ${req.authUser!.id} requesting contributions`);
       const contributions = await getUserContributions(req.authUser!.id);
+      console.log(`[/me/contributions] Found contributions:`, contributions);
       res.status(200).json(contributions);
-    } catch {
+    } catch (err) {
+      console.error("[/me/contributions] Error:", err);
       res
         .status(500)
         .json({ message: "Erreur lors de la récupération des contributions." });
@@ -156,7 +159,8 @@ router.post("/login", async (req: Request, res: Response) => {
       token,
       user: authUser,
     });
-  } catch {
+  } catch (err) {
+    console.error("Login Error:", err);
     res.status(500).json({ message: "Erreur lors de l'authentification." });
   }
 });

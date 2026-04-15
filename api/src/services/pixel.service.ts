@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import { PixelModel } from "../models/pixel.model";
 import { BoardModel } from "../models/board.model";
+import { UserModel } from "../models/user.model";
 import { getIO } from "../socket";
 
 export const getPixelsByBoard = async (boardId: string) => {
@@ -77,6 +78,13 @@ export const placePixel = async ({
     { upsert: true, new: true }
   ).populate("placedBy", "username");
 
+  if (userId) {
+    await UserModel.findByIdAndUpdate(userId, {
+      $inc: { totalPixelsPlaced: 1 },
+      $addToSet: { participatedBoards: new Types.ObjectId(boardId) },
+    });
+  }
+
   // Émettre en temps réel à tous les clients connectés sur ce board
   getIO()?.to(`board:${boardId}`).emit("pixel:placed", pixel);
 
@@ -91,20 +99,52 @@ export const getHeatmap = async (boardId: string) => {
 };
 
 export const getUserContributions = async (userId: string) => {
+  const user = await UserModel.findById(userId).populate({
+    path: "participatedBoards",
+    select: "_id title status endDate width height author",
+  });
+
   const pixels = await PixelModel.find({
     placedBy: new Types.ObjectId(userId),
-  }).populate("board", "title status");
+  }).populate({
+    path: "board",
+    select: "_id title status endDate width height author",
+  });
 
-  const boardMap = new Map<string, unknown>();
+  console.log(`[getUserContributions] User ${userId}: Found ${pixels.length} currently owned pixels`);
+
+  const boardMap = new Map<string, any>();
+
+  // Use currently owned pixels' boards
   for (const pixel of pixels) {
-    const boardId = pixel.board.toString();
+    if (!pixel.board) continue;
+    const boardId = (pixel.board as any)._id.toString();
     if (!boardMap.has(boardId)) {
       boardMap.set(boardId, pixel.board);
     }
   }
 
+  // Use boards the user permanently participated in
+  let totalPixels = pixels.length;
+  if (user) {
+    if (user.participatedBoards) {
+      for (const board of user.participatedBoards as any[]) {
+        if (!board) continue;
+        const boardId = board._id.toString();
+        if (!boardMap.has(boardId)) {
+          boardMap.set(boardId, board);
+        }
+      }
+    }
+    // Update totalPixels to not go down using user's permanent counter
+    if (user.totalPixelsPlaced > totalPixels) {
+      totalPixels = user.totalPixelsPlaced;
+    }
+  }
+
+  console.log(`[getUserContributions] Returning ${boardMap.size} unique boards`);
   return {
-    totalPixels: pixels.length,
+    totalPixels,
     boards: Array.from(boardMap.values()),
   };
 };
