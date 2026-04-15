@@ -98,16 +98,19 @@ export function ProfilePage({ theme, onToggleTheme }: ProfilePageProps) {
 
               {contributions && contributions.boards.length > 0 ? (
                 <ul>
-                  {contributions.boards.map((board) => (
-                    <li key={board._id}>
-                      <Link to={`/board/${board._id}`}>
-                        {board.title ?? 'Sans titre'}
-                      </Link>
-                      <span className={`board-status ${board.status}`}>
-                        {board.status === 'active' ? 'EN COURS' : 'TERMINÉ'}
-                      </span>
-                    </li>
-                  ))}
+                  {contributions.boards.map((board) => {
+                    const isFinished = new Date(board.endDate).getTime() <= Date.now()
+                    return (
+                      <li key={board._id}>
+                        <Link to={`/board/${board._id}`}>
+                          {board.title ?? 'Sans titre'}
+                        </Link>
+                        <span className={`board-status ${isFinished ? 'finished' : 'active'}`}>
+                          {isFinished ? 'TERMINÉ' : 'EN COURS'}
+                        </span>
+                      </li>
+                    )
+                  })}
                 </ul>
               ) : (
                 <p className="boards-empty">

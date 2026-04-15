@@ -107,12 +107,18 @@ mongoose
     const adminEmail = process.env.ADMIN_EMAIL ?? "admin@admin.com";
     const adminPassword = process.env.ADMIN_PASSWORD ?? "admin123";
     const adminUsername = process.env.ADMIN_USERNAME ?? "admin";
+    const isLocal = process.env.NODE_ENV !== "production";
 
     const existing = await UserModel.findOne({ email: adminEmail });
     if (!existing) {
       const hashed = await hashPassword(adminPassword);
       await UserModel.create({ username: adminUsername, email: adminEmail, password: hashed, isAdmin: true });
       console.log(`Admin créé: ${adminEmail}`);
+    } else if (isLocal) {
+      // En local, réinitialiser le mot de passe admin pour pouvoir se connecter
+      const hashed = await hashPassword(adminPassword);
+      await UserModel.updateOne({ email: adminEmail }, { password: hashed });
+      console.log(`Admin password réinitialisé en local: ${adminEmail}`);
     }
 
     httpServer.listen(PORT, () => {

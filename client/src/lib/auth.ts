@@ -160,7 +160,15 @@ export async function logoutUser(token: string): Promise<void> {
 
 export type Contributions = {
   totalPixels: number
-  boards: { _id: string; title?: string; status: string }[]
+  boards: {
+    _id: string
+    title?: string
+    status: string
+    endDate: string
+    width: number
+    height: number
+    author?: { username: string; email: string }
+  }[]
 }
 
 export async function getContributions(): Promise<Contributions> {

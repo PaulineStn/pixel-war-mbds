@@ -1,10 +1,12 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document, Types } from "mongoose";
 
 export interface IUser extends Document {
   username: string;
   email: string;
   password: string;
   isAdmin: boolean;
+  participatedBoards: Types.ObjectId[];
+  totalPixelsPlaced: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,17 +30,15 @@ const userSchema = new Schema<IUser>(
     password: {
       type: String,
       required: true,
-      minlength: 6,
-      select: false,
     },
     isAdmin: {
       type: Boolean,
       default: false,
     },
+    participatedBoards: [{ type: Schema.Types.ObjectId, ref: "Board" }],
+    totalPixelsPlaced: { type: Number, default: 0 },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 export const UserModel = mongoose.model<IUser>("User", userSchema);

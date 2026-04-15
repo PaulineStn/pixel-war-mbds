@@ -35,8 +35,9 @@ export function WarRoomPage({ theme, onToggleTheme, onOpenBoard }: WarRoomPagePr
     navigate('/')
   }
 
-  const activeBoards = boards.filter((b) => b.status === 'active')
-  const finishedBoards = boards.filter((b) => b.status === 'finished')
+  const now = Date.now()
+  const activeBoards = boards.filter((b) => new Date(b.endDate).getTime() > now)
+  const finishedBoards = boards.filter((b) => new Date(b.endDate).getTime() <= now)
 
   const visibleActive = filter === 'finished' ? [] : activeBoards
   const visibleFinished = filter === 'active' ? [] : finishedBoards

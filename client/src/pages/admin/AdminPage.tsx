@@ -282,34 +282,37 @@ export function AdminPage({ onBack, theme, onToggleTheme }: AdminPageProps) {
               </tr>
             </thead>
             <tbody>
-              {boards.map((board) => (
-                <tr key={board._id} className={editingId === board._id ? 'editing' : ''}>
-                  <td>{board.title ?? <em>Sans titre</em>}</td>
-                  <td>
-                    <span className={`board-status ${board.status}`}>
-                      {board.status === 'active' ? 'EN COURS' : 'TERMINÉ'}
-                    </span>
-                  </td>
-                  <td>{board.width}×{board.height}</td>
-                  <td>{board.cooldown}s</td>
-                  <td>{board.allowOverwrite ? '✓' : '✗'}</td>
-                  <td>{new Date(board.endDate).toLocaleDateString()}</td>
-                  <td className="admin-actions">
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => handleEdit(board)}
-                    >
-                      MODIFIER
-                    </button>
-                    <button
-                      className="btn btn-danger btn-sm"
-                      onClick={() => handleDelete(board._id)}
-                    >
-                      SUPPRIMER
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {boards.map((board) => {
+                const isFinished = new Date(board.endDate).getTime() <= Date.now()
+                return (
+                  <tr key={board._id} className={editingId === board._id ? 'editing' : ''}>
+                    <td>{board.title ?? <em>Sans titre</em>}</td>
+                    <td>
+                      <span className={`board-status ${isFinished ? 'finished' : 'active'}`}>
+                        {isFinished ? 'TERMINÉ' : 'EN COURS'}
+                      </span>
+                    </td>
+                    <td>{board.width}×{board.height}</td>
+                    <td>{board.cooldown}s</td>
+                    <td>{board.allowOverwrite ? '✓' : '✗'}</td>
+                    <td>{new Date(board.endDate).toLocaleDateString()}</td>
+                    <td className="admin-actions">
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => handleEdit(board)}
+                      >
+                        MODIFIER
+                      </button>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleDelete(board._id)}
+                      >
+                        SUPPRIMER
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}

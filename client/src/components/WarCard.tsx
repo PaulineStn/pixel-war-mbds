@@ -18,7 +18,9 @@ export function WarCard({ board, featured = false, onClick }: WarCardProps) {
   }, [])
 
   const cardClassName = 'war-card' + (featured ? ' featured' : '')
-  const isActive = board.status === 'active' && new Date(board.endDate).getTime() > now
+  const endTime = new Date(board.endDate).getTime()
+  const isFinished = endTime <= now
+  const isActive = !isFinished
 
   const timeRemaining = () => {
     const diff = new Date(board.endDate).getTime() - now
