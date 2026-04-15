@@ -1,19 +1,23 @@
-# pixel-war-mbds
+# Pixel-war-mbds
 
 # Description
 Application web collaborative permettant à plusieurs utilisateurs de dessiner en temps réel sur un tableau de pixels, avec des règles de participation (cooldown, limites, durée de vie du board).
 
-# Fonctionnalités
-- Authentification
+# Lien de l'application déployée
+
+https://pixel-war-mbds.onrender.com/
+
+# Fonctionnalités développées
+- **Authentification**
     - Inscription / Connexion
     - Gestion des utilisateurs
 
-- Homepage
+- **Homepage**
     - Accès login / register
     - Liste des PixelBoards
     - Statistiques globales (utilisateurs, boards)
 
-- Pixel Board
+- **Pixel Board**
 
   - Grille interactive de pixels
   - Choix de couleur
@@ -21,34 +25,36 @@ Application web collaborative permettant à plusieurs utilisateurs de dessiner e
   - Affichage des informations : taille, temps restant, règles du board
   - Mise à jour temps réel (WebSocket)
 
-- Administration
+- **Administration**
 
   - Création d’un PixelBoard
   - Modification / suppression
   - Configuration : statut (ouvert / fermé), taille, date limite, délai entre contributions, overwrite autorisé ou non
 
-- UI / UX
+- **UI / UX**
 
   - Thème clair / sombre (persistant)
 
-- Bonus
+- **Bonus**
 
   - Replay des contributions
   - Heatmap des pixels
   - Export du board (image / JSON)
 
-- Architecture Monorepo avec séparation front back
-    /client → Frontend (React + Vite)
-    /api → Backend (Node.js + Express)
-Base de données : MongoDB (Docker)
-Communication temps réel : WebSocket (Socket.IO)
+- **Architecture Monorepo** avec séparation front back
+    - /client → Frontend (React + Vite)
+    - /api → Backend (Node.js + Express)
+    - Base de données : MongoDB (Docker)
+    - Communication temps réel : WebSocket (Socket.IO)
 
 
 ## Première configuration
 
 ## Installation
+```bash
 git clone https://github.com/PaulineStn/pixel-war-mbds.git
 cd pixel-war-mbds
+```
 
 Dans le répertoire racine du projet :
 - Lancer MongoDB avec Docker
@@ -74,7 +80,7 @@ JWT_SECRET=your_secret_key
 
 ## Lancer le projet
 
-### Les deux en même temps
+### Les deux dans 2 terminaux différents
 côté api : 
 ```bash
 cd api/
@@ -86,8 +92,6 @@ cd client/
 npm run dev
 ```
 
-### Séparément (dans deux terminaux distincts)
-
 | Service | URL par défaut       |
 | ------- | --------------------- |
 | Client  | http://localhost:5173 |
@@ -95,11 +99,15 @@ npm run dev
 
 
 ## Auteurs et Répartition des tâches
-### ZENNANI Farid
+### **ZENNANI Farid**
 - GitHub : Faridzen
 - Tâches :
+    - implémentation du linter
+    - corrections sur les router
+    - corrections sur requêtes HTTP avec Tanstack et Axios
+    - corrections sur les états des pixels boards
 
-### STEICHEN Pauline
+### **STEICHEN Pauline**
 - GitHub : PaulineStn
 - Tâches :
     - mise en place initiale du repo et architecture back/front
@@ -107,11 +115,15 @@ npm run dev
     - mise en place des pages home, connexion, création de compte, profile
     - implémentation de l'interace utilisateur sur les pages
 
-### VANDAMME Clément
+### **VANDAMME Clément**
 - GitHub : Nassco
 - Tâches :
+    - corrections sur les pixels boards
+    - corrections sur les pages admin
+    - déploiement de l'application
+    - alimentation des données utilisateurs
 
-### AAROUR Mouna
+### **AAROUR Mouna**
 - GitHub : mounaAar
 - Tâches :
     - gestion des rôles et accès administrateur
