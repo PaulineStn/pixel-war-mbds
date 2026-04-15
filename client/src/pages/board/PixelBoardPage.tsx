@@ -36,6 +36,7 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
   // Drag tracking
   const mouseDownRef = useRef(false)
   const isDraggingRef = useRef(false)
+  const wasDraggingRef = useRef(false)
   const dragOriginRef = useRef({ mouseX: 0, mouseY: 0, panX: 0, panY: 0 })
 
   const [board, setBoard] = useState<Board | null>(null)
@@ -308,6 +309,7 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
       mouseDownRef.current = false
       if (isDraggingRef.current) {
         isDraggingRef.current = false
+        wasDraggingRef.current = true
         setIsDragging(false)
       }
     }
@@ -346,6 +348,13 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
     return () => clearInterval(interval)
   }, [cooldownRemaining])
 
+  // Auto-dismiss error after 3 seconds
+  useEffect(() => {
+    if (!error) return
+    const timeout = setTimeout(() => setError(null), 3000)
+    return () => clearTimeout(timeout)
+  }, [error])
+
   const getTimeRemaining = () => {
     if (!board) return ''
     const diff = new Date(board.endDate).getTime() - Date.now()
@@ -358,7 +367,10 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
   const handleCanvasClick = useCallback(
     async (e: React.MouseEvent<HTMLCanvasElement>) => {
       // Ignore if user was dragging
-      if (isDraggingRef.current) return
+      if (wasDraggingRef.current) {
+        wasDraggingRef.current = false
+        return
+      }
       if (!board || !session) return
       if (board.status === 'finished' || new Date(board.endDate) < new Date()) return
       if (cooldownRemaining > 0) {
@@ -476,11 +488,6 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
         </div>
       </div>
 
-      {error && <div className="board-error-banner">{error}</div>}
-      {cooldownRemaining > 0 && (
-        <div className="board-cooldown">Prochain pixel dans {cooldownRemaining}s</div>
-      )}
-
       {/* Canvas viewport */}
       <div ref={containerRef} className="board-canvas-wrapper">
         <canvas
@@ -494,6 +501,10 @@ export function PixelBoardPage({ boardId, onBack }: PixelBoardPageProps) {
           ref={overlayRef}
           style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', imageRendering: 'pixelated' }}
         />
+        {cooldownRemaining > 0 && (
+          <div className="board-cooldown">Prochain pixel dans {cooldownRemaining}s</div>
+        )}
+        {error && <div className="board-error-banner">{error}</div>}
       </div>
 
       {tooltip && (
