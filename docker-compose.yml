@@ -2,14 +2,43 @@ services:
   mongo:
     image: mongo:7
     container_name: pixelboard-mongo
+    restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: pixel_admin
-      MONGO_INITDB_ROOT_PASSWORD: pixel_admin_pwd
-      MONGO_INITDB_DATABASE: pixel-war
-    ports:
-      - '27017:27017'
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-pixel_admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-pixel_admin_pwd}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-pixel-war}
     volumes:
       - mongo-data:/data/db
+    # Ne pas exposer MongoDB sur l'hôte en production
+    # ports:
+    #   - '27017:27017'
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # L'URL publique de ton API, utilisée par le client au build
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    container_name: pixelboard-api
+    restart: unless-stopped
+    ports:
+      - '${API_PORT:-3000}:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      MONGODB_HOST: mongo
+      MONGODB_PORT: 27017
+      MONGODB_DB: ${MONGO_DB:-pixel-war}
+      MONGODB_USER: ${MONGO_USER:-pixel_admin}
+      MONGODB_PASSWORD: ${MONGO_PASSWORD:-pixel_admin_pwd}
+      CLIENT_ORIGIN: ${CLIENT_ORIGIN:-http://localhost:3000}
+      JWT_SECRET: ${JWT_SECRET:-changeme_long_random_string}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@admin.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+    depends_on:
+      - mongo
 
 volumes:
   mongo-data:
